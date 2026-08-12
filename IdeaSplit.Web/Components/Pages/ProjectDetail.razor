@@ -1,0 +1,115 @@
+@page "/project/{ProjectId:int}"
+@using IdeaSplit.Shared.Data
+@using IdeaSplit.Shared.Models
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Nav
+
+<div style="max-width:480px;margin:0 auto;padding:1rem;">
+    @if (project is null)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <button class="btn btn-link px-0" @onclick='() => Nav.NavigateTo("/")'>&larr; Back</button>
+        <h4>@project.Title</h4>
+        <p class="text-muted">@project.DoneCount of @project.TotalCount tasks done</p>
+        <div class="progress mb-3" style="height:6px;">
+            <div class="progress-bar" style="width:@(project.ProgressPercent)%"></div>
+        </div>
+
+        @foreach (var t in project.Tasks.OrderBy(t => t.SortOrder))
+        {
+            <div class="d-flex align-items-center gap-2 py-2 border-bottom">
+                <input type="checkbox" checked="@t.IsDone" @onchange="() => ToggleTask(t)" />
+                @if (editingId == t.Id)
+                {
+                    <input class="form-control form-control-sm" @bind="editText" @bind:event="oninput"
+                           @onkeydown="@(e => OnEditKeyDown(e, t))" />
+                    <button class="btn btn-sm btn-outline-primary" @onclick="() => SaveEdit(t)">Save</button>
+                }
+                else
+                {
+                    <span style="flex:1;@(t.IsDone ? "text-decoration:line-through;color:#888;" : "")">@t.Title</span>
+                    <button class="btn btn-sm btn-link" @onclick="() => StartEdit(t)">Edit</button>
+                    <button class="btn btn-sm btn-link text-danger" @onclick="() => DeleteTask(t)">Delete</button>
+                }
+            </div>
+        }
+
+        <div class="d-flex gap-2 mt-3">
+            <input class="form-control" placeholder="Add a task" @bind="newTaskText" @bind:event="oninput"
+                   @onkeydown="@(e => { if (e.Key == "Enter") AddTask(); })" />
+            <button class="btn btn-outline-primary" @onclick="AddTask">Add</button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+
+    private Project? project;
+    private int? editingId;
+    private string editText = "";
+    private string newTaskText = "";
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        using var db = DbFactory.CreateDbContext();
+        project = await db.Projects.Include(p => p.Tasks).FirstOrDefaultAsync(p => p.Id == ProjectId);
+    }
+
+    private async Task ToggleTask(TaskItem t)
+    {
+        t.IsDone = !t.IsDone;
+        using var db = DbFactory.CreateDbContext();
+        db.Attach(t).Property(x => x.IsDone).IsModified = true;
+        await db.SaveChangesAsync();
+    }
+
+    private void StartEdit(TaskItem t)
+    {
+        editingId = t.Id;
+        editText = t.Title;
+    }
+
+    private async Task SaveEdit(TaskItem t)
+    {
+        t.Title = editText;
+        using var db = DbFactory.CreateDbContext();
+        db.Attach(t).Property(x => x.Title).IsModified = true;
+        await db.SaveChangesAsync();
+        editingId = null;
+    }
+
+    private async Task OnEditKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e, TaskItem t)
+    {
+        if (e.Key == "Enter") await SaveEdit(t);
+    }
+
+    private async Task DeleteTask(TaskItem t)
+    {
+        using var db = DbFactory.CreateDbContext();
+        db.Tasks.Remove(t);
+        await db.SaveChangesAsync();
+        await Load();
+    }
+
+    private async Task AddTask()
+    {
+        if (string.IsNullOrWhiteSpace(newTaskText) || project is null) return;
+        using var db = DbFactory.CreateDbContext();
+        db.Tasks.Add(new TaskItem
+        {
+            ProjectId = project.Id,
+            Title = newTaskText,
+            SortOrder = project.Tasks.Count
+        });
+        await db.SaveChangesAsync();
+        newTaskText = "";
+        await Load();
+    }
+}

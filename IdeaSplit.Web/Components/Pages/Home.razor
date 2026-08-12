@@ -1,0 +1,51 @@
+@page "/"
+@using IdeaSplit.Shared.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Nav
+
+<PageTitle>IdeaSplit</PageTitle>
+
+<div style="max-width:480px;margin:0 auto;padding:1rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h3 style="margin:0;">Your projects</h3>
+        <div>
+            <button class="btn btn-outline-secondary" @onclick='() => Nav.NavigateTo("/settings")'>Settings</button>
+            <button class="btn btn-primary" @onclick='() => Nav.NavigateTo("/new")'>New project</button>
+        </div>
+    </div>
+
+    @if (projects is null)
+    {
+        <p>Loading...</p>
+    }
+    else if (projects.Count == 0)
+    {
+        <p>No projects yet. Start by describing an idea.</p>
+    }
+    else
+    {
+        @foreach (var p in projects)
+        {
+            <div class="card mb-2" style="cursor:pointer;" @onclick="() => Nav.NavigateTo($"/project/{p.Id}")">
+                <div class="card-body">
+                    <h5 class="card-title mb-1">@p.Title</h5>
+                    <p class="text-muted mb-2" style="font-size:0.85rem;">@p.DoneCount of @p.TotalCount tasks done</p>
+                    <div class="progress" style="height:6px;">
+                        <div class="progress-bar" style="width:@(p.ProgressPercent)%"></div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<IdeaSplit.Shared.Models.Project>? projects;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var db = DbFactory.CreateDbContext();
+        projects = await db.Projects.Include(p => p.Tasks).OrderByDescending(p => p.CreatedAt).ToListAsync();
+    }
+}

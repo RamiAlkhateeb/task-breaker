@@ -1,0 +1,39 @@
+@page "/settings"
+@using IdeaSplit.Shared.Services
+@inject SettingsService Settings
+@inject NavigationManager Nav
+
+<div style="max-width:480px;margin:0 auto;padding:1rem;">
+    <button class="btn btn-link px-0" @onclick='() => Nav.NavigateTo("/")'>&larr; Back</button>
+    <h4>Settings</h4>
+
+    <label class="form-label">Gemini API key</label>
+    <input type="password" class="form-control mb-1" @bind="apiKey" placeholder="AIza..." />
+    <p class="text-muted" style="font-size:0.8rem;">
+        Stored locally on this device. Get a free key at
+        <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a>.
+    </p>
+
+    @if (saved)
+    {
+        <div class="alert alert-success py-1">Saved</div>
+    }
+
+    <button class="btn btn-primary" @onclick="Save">Save key</button>
+</div>
+
+@code {
+    private string apiKey = "";
+    private bool saved;
+
+    protected override async Task OnInitializedAsync()
+    {
+        apiKey = await Settings.GetGeminiApiKeyAsync() ?? "";
+    }
+
+    private async Task Save()
+    {
+        await Settings.SaveGeminiApiKeyAsync(apiKey);
+        saved = true;
+    }
+}
