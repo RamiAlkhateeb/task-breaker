@@ -1,39 +1,79 @@
 @page "/settings"
 @using IdeaSplit.Shared.Services
-@inject SettingsService Settings
+@inject SettingsService SettingsService
+@inject GeminiService Gemini
 @inject NavigationManager Nav
 
-<div style="max-width:480px;margin:0 auto;padding:1rem;">
-    <button class="btn btn-link px-0" @onclick='() => Nav.NavigateTo("/")'>&larr; Back</button>
-    <h4>Settings</h4>
+<div class="page-container">
+    <button class="btn btn-link back-button" @onclick='() => Nav.NavigateTo("/")'>&larr; Back</button>
+    <h1>Settings</h1>
 
-    <label class="form-label">Gemini API key</label>
-    <input type="password" class="form-control mb-1" @bind="apiKey" placeholder="AIza..." />
-    <p class="text-muted" style="font-size:0.8rem;">
+    <label class="form-label" for="api-key">Gemini API key</label>
+    <input id="api-key" type="password" class="form-control" @bind="apiKey" placeholder="AIza..." />
+    <p class="form-hint">
         Stored locally on this device. Get a free key at
         <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a>.
     </p>
 
-    @if (saved)
+    <div class="model-heading">
+        <label class="form-label mb-0" for="model">Model</label>
+        <button class="btn btn-sm btn-outline-secondary" disabled="@isLoadingModels" @onclick="RefreshModels">
+            @(isLoadingModels ? "Refreshing..." : "Refresh")
+        </button>
+    </div>
+    @if (isLoadingModels)
     {
-        <div class="alert alert-success py-1">Saved</div>
+        <p class="form-hint">Loading available models...</p>
+    }
+    <select id="model" class="form-select" @bind="selectedModel">
+        @if (!availableModels.Contains(selectedModel, StringComparer.OrdinalIgnoreCase))
+        {
+            <option value="@selectedModel">@selectedModel (manual / unavailable)</option>
+        }
+        @foreach (var model in availableModels)
+        {
+            <option value="@model">@model</option>
+        }
+    </select>
+    @if (!isLoadingModels && availableModels.Count == 0 && !string.IsNullOrWhiteSpace(apiKey))
+    {
+        <p class="form-hint">No models could be loaded. You can keep using the saved model or refresh after checking your key.</p>
     }
 
-    <button class="btn btn-primary" @onclick="Save">Save key</button>
+    @if (saved)
+    {
+        <div class="alert alert-success">Settings saved.</div>
+    }
+
+    <button class="btn btn-primary action-button" @onclick="Save">Save settings</button>
 </div>
 
 @code {
     private string apiKey = "";
+    private string selectedModel = SettingsService.DefaultGeminiModel;
+    private List<string> availableModels = [];
+    private bool isLoadingModels;
     private bool saved;
 
     protected override async Task OnInitializedAsync()
     {
-        apiKey = await Settings.GetGeminiApiKeyAsync() ?? "";
+        apiKey = await SettingsService.GetGeminiApiKeyAsync() ?? "";
+        selectedModel = await SettingsService.GetGeminiModelAsync();
+        if (!string.IsNullOrWhiteSpace(apiKey)) await RefreshModels();
     }
 
     private async Task Save()
     {
-        await Settings.SaveGeminiApiKeyAsync(apiKey);
+        await SettingsService.SaveGeminiApiKeyAsync(apiKey);
+        await SettingsService.SaveGeminiModelAsync(selectedModel);
         saved = true;
+        if (!string.IsNullOrWhiteSpace(apiKey)) await RefreshModels();
+    }
+
+    private async Task RefreshModels()
+    {
+        isLoadingModels = true;
+        try { availableModels = await Gemini.ListAvailableModelsAsync(); }
+        finally { isLoadingModels = false; }
     }
 }

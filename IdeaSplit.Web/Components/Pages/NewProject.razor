@@ -2,13 +2,14 @@
 @using IdeaSplit.Shared.Data
 @using IdeaSplit.Shared.Models
 @using IdeaSplit.Shared.Services
+@using Microsoft.EntityFrameworkCore
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject GeminiService Gemini
 @inject NavigationManager Nav
 
-<div style="max-width:480px;margin:0 auto;padding:1rem;">
-    <h4>New project</h4>
-    <p class="text-muted">Describe your idea in a sentence or two. It'll be split into tasks.</p>
+<div class="page-container">
+    <h1>New project</h1>
+    <p class="text-muted">Describe your idea in a sentence or two. It will be split into tasks.</p>
 
     <textarea class="form-control mb-2" rows="3" @bind="idea" placeholder="e.g. Build a landing page for my app"></textarea>
 
@@ -17,7 +18,12 @@
         <div class="alert alert-danger">@error</div>
     }
 
-    <button class="btn btn-primary" disabled="@(isLoading || string.IsNullOrWhiteSpace(idea))" @onclick="Generate">
+    @if (!string.IsNullOrEmpty(usedModel))
+    {
+        <p class="form-hint">Created with @usedModel.</p>
+    }
+
+    <button class="btn btn-primary action-button" disabled="@(isLoading || string.IsNullOrWhiteSpace(idea))" @onclick="Generate">
         @(isLoading ? "Breaking it down..." : "Break it down")
     </button>
 </div>
@@ -26,6 +32,7 @@
     private string idea = "";
     private bool isLoading;
     private string? error;
+    private string? usedModel;
 
     private async Task Generate()
     {
@@ -33,19 +40,20 @@
         error = null;
         try
         {
-            var taskTitles = await Gemini.BreakDownIdeaAsync(idea);
+            var result = await Gemini.BreakDownIdeaAsync(idea);
+            usedModel = result.Model;
 
             using var db = DbFactory.CreateDbContext();
             var project = new Project
             {
                 Title = idea.Length > 60 ? idea[..60] + "..." : idea,
                 OriginalIdea = idea,
-                Tasks = taskTitles.Select((t, i) => new TaskItem { Title = t, SortOrder = i }).ToList()
+                Tasks = result.Tasks.Select((t, i) => new TaskItem { Title = t, SortOrder = i }).ToList()
             };
             db.Projects.Add(project);
             await db.SaveChangesAsync();
 
-            Nav.NavigateTo($"/project/{project.Id}");
+            Nav.NavigateTo($"/project/{project.Id}?model={Uri.EscapeDataString(result.Model)}");
         }
         catch (Exception ex)
         {

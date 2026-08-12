@@ -5,23 +5,27 @@
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject NavigationManager Nav
 
-<div style="max-width:480px;margin:0 auto;padding:1rem;">
+<div class="page-container">
     @if (project is null)
     {
         <p>Loading...</p>
     }
     else
     {
-        <button class="btn btn-link px-0" @onclick='() => Nav.NavigateTo("/")'>&larr; Back</button>
-        <h4>@project.Title</h4>
+        <button class="btn btn-link back-button" @onclick='() => Nav.NavigateTo("/")'>&larr; Back</button>
+        <h1>@project.Title</h1>
         <p class="text-muted">@project.DoneCount of @project.TotalCount tasks done</p>
-        <div class="progress mb-3" style="height:6px;">
+        @if (!string.IsNullOrWhiteSpace(UsedModel))
+        {
+            <p class="form-hint">Tasks generated with @UsedModel.</p>
+        }
+        <div class="progress task-progress mb-3">
             <div class="progress-bar" style="width:@(project.ProgressPercent)%"></div>
         </div>
 
         @foreach (var t in project.Tasks.OrderBy(t => t.SortOrder))
         {
-            <div class="d-flex align-items-center gap-2 py-2 border-bottom">
+            <div class="task-row">
                 <input type="checkbox" checked="@t.IsDone" @onchange="() => ToggleTask(t)" />
                 @if (editingId == t.Id)
                 {
@@ -31,16 +35,16 @@
                 }
                 else
                 {
-                    <span style="flex:1;@(t.IsDone ? "text-decoration:line-through;color:#888;" : "")">@t.Title</span>
+                    <span class="task-title @(t.IsDone ? "task-complete" : "")">@t.Title</span>
                     <button class="btn btn-sm btn-link" @onclick="() => StartEdit(t)">Edit</button>
                     <button class="btn btn-sm btn-link text-danger" @onclick="() => DeleteTask(t)">Delete</button>
                 }
             </div>
         }
 
-        <div class="d-flex gap-2 mt-3">
+        <div class="add-task-row">
             <input class="form-control" placeholder="Add a task" @bind="newTaskText" @bind:event="oninput"
-                   @onkeydown="@(e => { if (e.Key == "Enter") AddTask(); })" />
+                   @onkeydown="@(async e => { if (e.Key == "Enter") await AddTask(); })" />
             <button class="btn btn-outline-primary" @onclick="AddTask">Add</button>
         </div>
     }
@@ -48,6 +52,7 @@
 
 @code {
     [Parameter] public int ProjectId { get; set; }
+    [SupplyParameterFromQuery(Name = "model")] public string? UsedModel { get; set; }
 
     private Project? project;
     private int? editingId;
