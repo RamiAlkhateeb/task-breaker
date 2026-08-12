@@ -11,6 +11,7 @@ public class GeminiService
 {
     private static readonly string[] FallbackModels =
     [
+        "gemini-3.5-flash-lite",
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite",
         "gemini-1.5-flash",
@@ -62,8 +63,12 @@ public class GeminiService
             throw new InvalidOperationException("No Gemini API key set. Add one in Settings.");
 
         var selectedModel = await _settings.GetGeminiModelAsync();
+        var availableModels = await ListAvailableModelsAsync();
+        var knownFallbacks = availableModels.Count == 0
+            ? FallbackModels
+            : FallbackModels.Where(model => availableModels.Contains(model, StringComparer.OrdinalIgnoreCase));
         var modelsToTry = new[] { selectedModel }
-            .Concat(FallbackModels)
+            .Concat(knownFallbacks)
             .Distinct(StringComparer.OrdinalIgnoreCase);
         Exception? lastError = null;
 

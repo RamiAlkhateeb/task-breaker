@@ -3,9 +3,10 @@
 @inject SettingsService SettingsService
 @inject GeminiService Gemini
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <div class="page-container">
-    <button class="btn btn-link back-button" @onclick='() => Nav.NavigateTo("/")'>&larr; Back</button>
+    <button class="btn btn-link icon-button back-button" title="Back" aria-label="Back" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left"></i></button>
     <h1>Settings</h1>
 
     <label class="form-label" for="api-key">Gemini API key</label>
@@ -17,9 +18,7 @@
 
     <div class="model-heading">
         <label class="form-label mb-0" for="model">Model</label>
-        <button class="btn btn-sm btn-outline-secondary" disabled="@isLoadingModels" @onclick="RefreshModels">
-            @(isLoadingModels ? "Refreshing..." : "Refresh")
-        </button>
+        <button class="btn btn-outline-secondary icon-button" title="Refresh models" aria-label="Refresh models" disabled="@isLoadingModels" @onclick="RefreshModels"><i class="bi bi-arrow-clockwise"></i></button>
     </div>
     @if (isLoadingModels)
     {
@@ -45,11 +44,12 @@
         <div class="alert alert-success">Settings saved.</div>
     }
 
-    <button class="btn btn-primary action-button" @onclick="Save">Save settings</button>
+    <button class="btn btn-primary icon-button" title="Save" aria-label="Save" @onclick="Save"><i class="bi bi-check-lg"></i></button>
 </div>
 
 @code {
     private string apiKey = "";
+    private const string ModelStorageKey = "ideasplit_model";
     private string selectedModel = SettingsService.DefaultGeminiModel;
     private List<string> availableModels = [];
     private bool isLoadingModels;
@@ -58,16 +58,42 @@
     protected override async Task OnInitializedAsync()
     {
         apiKey = await SettingsService.GetGeminiApiKeyAsync() ?? "";
-        selectedModel = await SettingsService.GetGeminiModelAsync();
-        if (!string.IsNullOrWhiteSpace(apiKey)) await RefreshModels();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var browserModel = await JS.InvokeAsync<string?>("localStorage.getItem", ModelStorageKey);
+        if (!string.IsNullOrWhiteSpace(browserModel))
+        {
+            selectedModel = browserModel;
+            await SettingsService.SaveGeminiModelAsync(selectedModel);
+        }
+
+        if (!string.IsNullOrWhiteSpace(apiKey))
+        {
+            await RefreshModels();
+            if (string.IsNullOrWhiteSpace(browserModel))
+            {
+                selectedModel = availableModels.FirstOrDefault(model =>
+                    string.Equals(model, "gemini-3.5-flash-lite", StringComparison.OrdinalIgnoreCase))
+                    ?? availableModels.FirstOrDefault()
+                    ?? SettingsService.DefaultGeminiModel;
+                await PersistModelAsync();
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task Save()
     {
         await SettingsService.SaveGeminiApiKeyAsync(apiKey);
-        await SettingsService.SaveGeminiModelAsync(selectedModel);
+        await PersistModelAsync();
         saved = true;
         if (!string.IsNullOrWhiteSpace(apiKey)) await RefreshModels();
+        Nav.NavigateTo("/");
     }
 
     private async Task RefreshModels()
@@ -75,5 +101,11 @@
         isLoadingModels = true;
         try { availableModels = await Gemini.ListAvailableModelsAsync(); }
         finally { isLoadingModels = false; }
+    }
+
+    private async Task PersistModelAsync()
+    {
+        await JS.InvokeVoidAsync("localStorage.setItem", ModelStorageKey, selectedModel);
+        await SettingsService.SaveGeminiModelAsync(selectedModel);
     }
 }

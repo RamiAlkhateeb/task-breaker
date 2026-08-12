@@ -10,8 +10,7 @@
     <div class="page-header">
         <h1>Your projects</h1>
         <div class="header-actions">
-            <button class="btn btn-outline-secondary" @onclick='() => Nav.NavigateTo("/settings")'>Settings</button>
-            <button class="btn btn-primary" @onclick='() => Nav.NavigateTo("/new")'>New project</button>
+            <button class="btn btn-outline-secondary icon-button" title="Settings" aria-label="Settings" @onclick='() => Nav.NavigateTo("/settings")'><i class="bi bi-gear"></i></button>
         </div>
     </div>
 
@@ -31,6 +30,7 @@
                 <div class="card-body">
                     <h5 class="card-title mb-1">@p.Title</h5>
                     <p class="text-muted mb-2">@p.DoneCount of @p.TotalCount tasks done</p>
+                    <div class="progress-summary"><span>@p.ProgressPercent.ToString("F1")%</span></div>
                     <div class="progress task-progress">
                         <div class="progress-bar" style="width:@(p.ProgressPercent)%"></div>
                     </div>
@@ -39,6 +39,8 @@
         }
     }
 </div>
+
+<button class="btn btn-primary floating-action-button" title="New project" aria-label="New project" @onclick='() => Nav.NavigateTo("/new")'><i class="bi bi-plus-lg"></i></button>
 
 @code {
     private List<IdeaSplit.Shared.Models.Project>? projects;

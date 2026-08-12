@@ -12,13 +12,14 @@
     }
     else
     {
-        <button class="btn btn-link back-button" @onclick='() => Nav.NavigateTo("/")'>&larr; Back</button>
+        <button class="btn btn-link icon-button back-button" title="Back" aria-label="Back" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left"></i></button>
         <h1>@project.Title</h1>
         <p class="text-muted">@project.DoneCount of @project.TotalCount tasks done</p>
         @if (!string.IsNullOrWhiteSpace(UsedModel))
         {
             <p class="form-hint">Tasks generated with @UsedModel.</p>
         }
+        <div class="progress-summary"><span>@project.ProgressPercent.ToString("F1")%</span></div>
         <div class="progress task-progress mb-3">
             <div class="progress-bar" style="width:@(project.ProgressPercent)%"></div>
         </div>
@@ -31,13 +32,13 @@
                 {
                     <input class="form-control form-control-sm" @bind="editText" @bind:event="oninput"
                            @onkeydown="@(e => OnEditKeyDown(e, t))" />
-                    <button class="btn btn-sm btn-outline-primary" @onclick="() => SaveEdit(t)">Save</button>
+                    <button class="btn btn-outline-primary icon-button" title="Save" aria-label="Save" @onclick="() => SaveEdit(t)"><i class="bi bi-check-lg"></i></button>
                 }
                 else
                 {
                     <span class="task-title @(t.IsDone ? "task-complete" : "")">@t.Title</span>
-                    <button class="btn btn-sm btn-link" @onclick="() => StartEdit(t)">Edit</button>
-                    <button class="btn btn-sm btn-link text-danger" @onclick="() => DeleteTask(t)">Delete</button>
+                    <button class="btn btn-link icon-button" title="Edit" aria-label="Edit" @onclick="() => StartEdit(t)"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-link text-danger icon-button" title="Delete" aria-label="Delete" @onclick="() => DeleteTask(t)"><i class="bi bi-trash"></i></button>
                 }
             </div>
         }
@@ -45,7 +46,7 @@
         <div class="add-task-row">
             <input class="form-control" placeholder="Add a task" @bind="newTaskText" @bind:event="oninput"
                    @onkeydown="@(async e => { if (e.Key == "Enter") await AddTask(); })" />
-            <button class="btn btn-outline-primary" @onclick="AddTask">Add</button>
+            <button class="btn btn-outline-primary icon-button" title="Add" aria-label="Add" @onclick="AddTask"><i class="bi bi-plus-lg"></i></button>
         </div>
     }
 </div>
