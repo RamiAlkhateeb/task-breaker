@@ -13,6 +13,9 @@ public class SettingsService
     private readonly string _modelPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "ideasplit_model.txt");
+    private readonly string _searchKeyPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "ideasplit_search_key.txt");
 
     public const string DefaultGeminiModel = "gemini-2.0-flash";
 
@@ -40,4 +43,13 @@ public class SettingsService
         await File.WriteAllTextAsync(_modelPath,
             string.IsNullOrWhiteSpace(model) ? DefaultGeminiModel : model.Trim());
     }
+
+    public Task<string?> GetWebSearchApiKeyAsync()
+    {
+        if (!File.Exists(_searchKeyPath)) return Task.FromResult<string?>(null);
+        return Task.FromResult<string?>(File.ReadAllText(_searchKeyPath).Trim());
+    }
+
+    public Task SaveWebSearchApiKeyAsync(string apiKey) =>
+        File.WriteAllTextAsync(_searchKeyPath, apiKey.Trim());
 }

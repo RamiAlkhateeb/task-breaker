@@ -5,34 +5,48 @@
 @using Microsoft.EntityFrameworkCore
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject GeminiService Gemini
+@inject WebSearchService WebSearch
 @inject NavigationManager Nav
 
 <div class="page-container">
     <h1>New project</h1>
-    <p class="text-muted">Describe your idea in a sentence or two. It will be split into tasks.</p>
+    <label class="book-toggle">
+        <input type="checkbox" @bind="isBook" />
+        <span><i class="bi bi-book" aria-hidden="true"></i> This is a book I want to read</span>
+    </label>
+    <p class="text-muted">@(isBook ? "Enter a book title and author to build a chapter checklist." : "Describe your idea in a sentence or two. It will be split into tasks.")</p>
 
-    <textarea class="form-control mb-2" rows="3" @bind="idea" placeholder="e.g. Build a landing page for my app"></textarea>
+    @if (isBook)
+    {
+        <input class="form-control" @bind="idea" placeholder="e.g. Dune by Frank Herbert" />
+    }
+    else
+    {
+        <textarea class="form-control" rows="3" @bind="idea" placeholder="e.g. Build a landing page for my app"></textarea>
+    }
 
     @if (!string.IsNullOrEmpty(error))
     {
-        <div class="alert alert-danger">@error</div>
+        <div class="alert alert-danger mt-3">@error</div>
     }
 
-    @if (!string.IsNullOrEmpty(usedModel))
-    {
-        <p class="form-hint">Created with @usedModel.</p>
-    }
-
-    <button class="btn btn-primary action-button" disabled="@(isLoading || string.IsNullOrWhiteSpace(idea))" @onclick="Generate">
-        @(isLoading ? "Breaking it down..." : "Break it down")
+    <button class="btn btn-primary action-button mt-3" disabled="@(isLoading || string.IsNullOrWhiteSpace(idea))" @onclick="Generate">
+        @if (isLoading)
+        {
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Creating checklist...</span>
+        }
+        else
+        {
+            <span>@(isBook ? "Get chapters" : "Break it down")</span>
+        }
     </button>
 </div>
 
 @code {
     private string idea = "";
+    private bool isBook;
     private bool isLoading;
     private string? error;
-    private string? usedModel;
 
     private async Task Generate()
     {
@@ -40,20 +54,35 @@
         error = null;
         try
         {
-            var result = await Gemini.BreakDownIdeaAsync(idea);
-            usedModel = result.Model;
+            List<string> taskTitles;
+            string? usedModel = null;
+            if (isBook)
+            {
+                taskTitles = await Gemini.GetBookChaptersAsync(idea);
+                if (taskTitles.Count < 2)
+                    taskTitles = await WebSearch.SearchBookTableOfContentsAsync(idea);
+                if (taskTitles.Count < 2)
+                    throw new InvalidOperationException("No reliable table of contents was found. Check the title and author, or configure a Bing Web Search API key in Settings.");
+            }
+            else
+            {
+                var result = await Gemini.BreakDownIdeaAsync(idea);
+                taskTitles = result.Tasks;
+                usedModel = result.Model;
+            }
 
             using var db = DbFactory.CreateDbContext();
             var project = new Project
             {
-                Title = idea.Length > 60 ? idea[..60] + "..." : idea,
+                Title = isBook ? idea : idea.Length > 60 ? idea[..60] + "..." : idea,
                 OriginalIdea = idea,
-                Tasks = result.Tasks.Select((t, i) => new TaskItem { Title = t, SortOrder = i }).ToList()
+                IsBook = isBook,
+                Tasks = taskTitles.Select((title, index) => new TaskItem { Title = title, SortOrder = index }).ToList()
             };
             db.Projects.Add(project);
             await db.SaveChangesAsync();
-
-            Nav.NavigateTo($"/project/{project.Id}?model={Uri.EscapeDataString(result.Model)}");
+            var modelQuery = usedModel is null ? "" : $"?model={Uri.EscapeDataString(usedModel)}";
+            Nav.NavigateTo($"/project/{project.Id}{modelQuery}");
         }
         catch (Exception ex)
         {

@@ -8,6 +8,7 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
         Database.EnsureCreated();
+        EnsureExistingDatabaseSchema();
     }
 
     public DbSet<Project> Projects => Set<Project>();
@@ -20,5 +21,17 @@ public class AppDbContext : DbContext
             .WithOne()
             .HasForeignKey(t => t.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
+    }
+
+    private void EnsureExistingDatabaseSchema()
+    {
+        try
+        {
+            Database.ExecuteSqlRaw("ALTER TABLE Projects ADD COLUMN IsBook INTEGER NOT NULL DEFAULT 0");
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException)
+        {
+            // Existing databases already have the column; new databases get it from EnsureCreated.
+        }
     }
 }

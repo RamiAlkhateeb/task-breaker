@@ -16,7 +16,11 @@
 
     @if (projects is null)
     {
-        <p>Loading...</p>
+        <div class="loading-stack" aria-label="Loading projects" role="status">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <span class="visually-hidden">Loading projects</span>
+        </div>
     }
     else if (projects.Count == 0)
     {
@@ -26,9 +30,15 @@
     {
         @foreach (var p in projects)
         {
-            <div class="card project-card mb-2" @onclick='() => Nav.NavigateTo($"/project/{p.Id}")'>
+            <div class="card project-card" @onclick='() => Nav.NavigateTo($"/project/{p.Id}")'>
                 <div class="card-body">
-                    <h5 class="card-title mb-1">@p.Title</h5>
+                    <div class="project-title-row">
+                        <h5 class="card-title mb-1">@p.Title</h5>
+                        @if (p.IsBook)
+                        {
+                            <span class="book-badge" title="Reading project"><i class="bi bi-book" aria-hidden="true"></i><span>Book</span></span>
+                        }
+                    </div>
                     <p class="text-muted mb-2">@p.DoneCount of @p.TotalCount tasks done</p>
                     <div class="progress-summary"><span>@p.ProgressPercent.ToString("F1")%</span></div>
                     <div class="progress task-progress">

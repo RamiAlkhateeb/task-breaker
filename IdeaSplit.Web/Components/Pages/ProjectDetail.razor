@@ -8,12 +8,17 @@
 <div class="page-container">
     @if (project is null)
     {
-        <p>Loading...</p>
+        <div class="loading-stack" aria-label="Loading project" role="status">
+            <div class="skeleton-line skeleton-title"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line"></div>
+            <span class="visually-hidden">Loading project</span>
+        </div>
     }
     else
     {
         <button class="btn btn-link icon-button back-button" title="Back" aria-label="Back" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left"></i></button>
-        <h1>@project.Title</h1>
+        <h1>@project.Title @if (project.IsBook) { <i class="bi bi-book book-title-icon" title="Reading project" aria-label="Reading project"></i> }</h1>
         <p class="text-muted">@project.DoneCount of @project.TotalCount tasks done</p>
         @if (!string.IsNullOrWhiteSpace(UsedModel))
         {

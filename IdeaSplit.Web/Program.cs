@@ -15,6 +15,7 @@ var dbPath = Path.Combine(
 builder.Services.AddDbContextFactory<AppDbContext>(o => o.UseSqlite($"Data Source={dbPath}"));
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddHttpClient<GeminiService>();
+builder.Services.AddHttpClient<WebSearchService>();
 
 var app = builder.Build();
 
