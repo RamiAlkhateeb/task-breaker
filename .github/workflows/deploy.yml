@@ -27,14 +27,11 @@ jobs:
         run: dotnet publish IdeaSplit.Web/IdeaSplit.Web.csproj -c Release -o publish
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v4
         env:
           WRANGLER_LOG: debug
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: "4"
-          # The list command logs the exact project names accessible to this token.
-          command: |
-            pages project list
-            pages deploy publish/wwwroot --project-name=ideasplit
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # This prints the exact Pages projects available to the configured token.
+          npx --yes wrangler@4 pages project list
+          npx --yes wrangler@4 pages deploy publish/wwwroot --project-name=ideasplit
