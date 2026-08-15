@@ -22,10 +22,14 @@ a:hover, .btn-link:hover { color: #bddaff; }
 .page-header h1 { margin: 0; }
 .header-actions { display: flex; gap: 8px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
-.project-card { cursor: pointer; margin-bottom: 16px; transition: transform .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease; }
-.project-card:hover { background: var(--surface-raised); border-color: #567092; transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.3); }
+.project-card { --card-accent: var(--accent); cursor: pointer; margin-bottom: 16px; border-left: 5px solid var(--card-accent); transition: transform .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.project-card:hover { background: var(--surface-raised); border-color: var(--card-accent); transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.3); }
 .project-card:active { transform: translateY(0); }
 .project-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.project-card-actions { display: flex; align-items: center; gap: 4px; margin: -8px -8px 0 0; }
+.project-card .card-action { color: var(--card-accent); }
+.project-card .card-action:hover { color: var(--text); background: color-mix(in srgb, var(--card-accent) 18%, transparent); }
+.delete-project-button { color: #ff948f !important; }
 .text-muted, .form-hint { color: var(--muted) !important; }
 .form-hint { margin: 8px 0 16px; font-size: .875rem; line-height: 1.45; }
 .form-label { margin-bottom: 8px; font-weight: 600; }
@@ -42,7 +46,8 @@ textarea.form-control { min-height: 120px; }
 .back-button { justify-content: center; }
 .model-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; }
 .task-progress { height: 8px; border-radius: 999px; background: #293647; overflow: hidden; }
-.progress-bar { background: var(--accent-strong); transition: width .3s ease; }
+.project-card .progress-bar { background: linear-gradient(90deg, color-mix(in srgb, var(--card-accent) 72%, #fff), var(--card-accent)); }
+.progress-bar { background: linear-gradient(90deg, var(--accent), var(--accent-strong)); transition: width .3s ease; }
 .progress-summary { display: flex; justify-content: flex-end; margin-bottom: 8px; color: var(--muted); font-size: .875rem; }
 .task-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 16px 0; border-bottom: 1px solid var(--border); }
 .task-row input[type="checkbox"], .book-toggle input { width: 22px; height: 22px; accent-color: var(--accent-strong); transition: transform .15s ease; }
@@ -55,6 +60,13 @@ textarea.form-control { min-height: 120px; }
 .book-toggle { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 16px; color: var(--text); cursor: pointer; }
 .book-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 1px solid #4974a7; border-radius: 999px; color: #b9d8ff; font-size: .75rem; white-space: nowrap; }
 .book-title-icon { color: #b9d8ff; font-size: .9em; }
+.version-banner { position: fixed; right: 16px; bottom: 88px; z-index: 20; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 8px 8px 8px 16px; border: 1px solid var(--accent); border-radius: var(--radius); background: var(--surface-raised); box-shadow: var(--shadow); color: var(--text); }
+.version-banner .btn-sm { min-height: 36px; }
+.version-dismiss { width: 44px; min-width: 44px; height: 44px; min-height: 44px; color: var(--muted); }
+.empty-state { display: flex; flex-direction: column; align-items: center; max-width: 360px; margin: 40px auto; color: var(--accent); text-align: center; }
+.empty-state-art { width: min(200px, 55vw); height: auto; margin-bottom: 16px; }
+.empty-state h2 { margin: 0 0 8px; color: var(--text); font-size: 1.35rem; }
+.empty-state p { margin: 0; color: var(--muted); }
 .loading-stack { display: grid; gap: 16px; }
 .skeleton-card, .skeleton-line { border-radius: var(--radius); background: linear-gradient(90deg, #1b2530 25%, #2b3948 50%, #1b2530 75%); background-size: 200% 100%; animation: shimmer 1.25s infinite; }
 .skeleton-card { height: 132px; border: 1px solid var(--border); }

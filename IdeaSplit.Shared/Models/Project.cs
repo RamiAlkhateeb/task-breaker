@@ -6,6 +6,7 @@ public class Project
     public string Title { get; set; } = "";
     public string OriginalIdea { get; set; } = "";
     public bool IsBook { get; set; }
+    public bool IsPinned { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 
     public List<TaskItem> Tasks { get; set; } = new();

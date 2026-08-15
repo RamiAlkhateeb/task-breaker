@@ -13,6 +13,23 @@ public class LocalStorageProjectStore : IProjectStore
         (await _storage.GetItemAsync<List<Project>>(ProjectsKey) ?? []).OrderByDescending(project => project.CreatedAt).ToList();
     public async Task<Project?> GetProjectAsync(int projectId) => (await GetProjectsAsync()).FirstOrDefault(project => project.Id == projectId);
 
+    public async Task DeleteProjectAsync(int projectId)
+    {
+        var projects = await GetProjectsAsync();
+        projects.RemoveAll(project => project.Id == projectId);
+        await _storage.SetItemAsync(ProjectsKey, projects);
+    }
+
+    public async Task TogglePinAsync(int projectId)
+    {
+        var projects = await GetProjectsAsync();
+        var project = projects.FirstOrDefault(existing => existing.Id == projectId);
+        if (project is null) return;
+
+        project.IsPinned = !project.IsPinned;
+        await _storage.SetItemAsync(ProjectsKey, projects);
+    }
+
     public async Task SaveProjectAsync(Project project)
     {
         var projects = await GetProjectsAsync();

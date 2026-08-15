@@ -1,0 +1,45 @@
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+@if (updateAvailable)
+{
+    <div class="version-banner" role="status">
+        <span>A new version is available.</span>
+        <button class="btn btn-sm btn-primary" @onclick="Reload">Refresh</button>
+        <button class="btn btn-link icon-button version-dismiss" title="Dismiss" aria-label="Dismiss" @onclick="Dismiss"><i class="bi bi-x-lg"></i></button>
+    </div>
+}
+
+@code {
+    private string? loadedVersion;
+    private bool updateAvailable;
+
+    protected override async Task OnInitializedAsync()
+    {
+        loadedVersion = await JS.InvokeAsync<string?>("ideaSplitVersionChecker.getBuildVersion");
+        var currentVersion = await GetVersionAsync();
+        updateAvailable = !string.IsNullOrWhiteSpace(currentVersion) && currentVersion != loadedVersion;
+    }
+
+    private async Task<string?> GetVersionAsync()
+    {
+        try
+        {
+            var manifest = await Http.GetFromJsonAsync<VersionManifest>($"version.json?t={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}");
+            return manifest?.Version;
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+    }
+
+    private void Dismiss()
+    {
+        updateAvailable = false;
+    }
+
+    private Task Reload() => JS.InvokeVoidAsync("ideaSplitVersionChecker.reload").AsTask();
+
+    private sealed class VersionManifest { public string? Version { get; set; } }
+}

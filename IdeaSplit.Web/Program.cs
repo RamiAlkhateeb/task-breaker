@@ -15,7 +15,7 @@ builder.Services.AddScoped<GeminiService>();
 builder.Services.AddScoped<WebSearchService>();
 builder.Services.AddScoped(_ => new HttpClient
 {
-    BaseAddress = new Uri("https://generativelanguage.googleapis.com/")
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
 });
 
 await builder.Build().RunAsync();

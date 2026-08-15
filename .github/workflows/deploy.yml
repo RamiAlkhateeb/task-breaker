@@ -23,6 +23,11 @@ jobs:
       - name: Restore
         run: dotnet restore
 
+      - name: Generate version manifest
+        run: |
+          printf '{"version":"%s"}\n' "${{ github.sha }}" > IdeaSplit.Web/wwwroot/version.json
+          printf 'window.ideaSplitBuildVersion = "%s";\n' "${{ github.sha }}" > IdeaSplit.Web/wwwroot/build-version.js
+
       - name: Publish WASM app
         run: dotnet publish IdeaSplit.Web/IdeaSplit.Web.csproj -c Release -o publish
 
