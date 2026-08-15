@@ -1,7 +1,6 @@
 @page "/"
 @using IdeaSplit.Shared.Data
-@using Microsoft.EntityFrameworkCore
-@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IProjectStore ProjectStore
 @inject NavigationManager Nav
 
 <PageTitle>IdeaSplit</PageTitle>
@@ -57,7 +56,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        using var db = DbFactory.CreateDbContext();
-        projects = await db.Projects.Include(p => p.Tasks).OrderByDescending(p => p.CreatedAt).ToListAsync();
+        projects = await ProjectStore.GetProjectsAsync();
     }
 }

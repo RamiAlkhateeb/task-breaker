@@ -1,8 +1,7 @@
 @page "/project/{ProjectId:int}"
 @using IdeaSplit.Shared.Data
 @using IdeaSplit.Shared.Models
-@using Microsoft.EntityFrameworkCore
-@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IProjectStore ProjectStore
 @inject NavigationManager Nav
 
 <div class="page-container">
@@ -69,16 +68,13 @@
 
     private async Task Load()
     {
-        using var db = DbFactory.CreateDbContext();
-        project = await db.Projects.Include(p => p.Tasks).FirstOrDefaultAsync(p => p.Id == ProjectId);
+        project = await ProjectStore.GetProjectAsync(ProjectId);
     }
 
     private async Task ToggleTask(TaskItem t)
     {
         t.IsDone = !t.IsDone;
-        using var db = DbFactory.CreateDbContext();
-        db.Attach(t).Property(x => x.IsDone).IsModified = true;
-        await db.SaveChangesAsync();
+        if (project is not null) await ProjectStore.SaveProjectAsync(project);
     }
 
     private void StartEdit(TaskItem t)
@@ -90,9 +86,7 @@
     private async Task SaveEdit(TaskItem t)
     {
         t.Title = editText;
-        using var db = DbFactory.CreateDbContext();
-        db.Attach(t).Property(x => x.Title).IsModified = true;
-        await db.SaveChangesAsync();
+        if (project is not null) await ProjectStore.SaveProjectAsync(project);
         editingId = null;
     }
 
@@ -103,24 +97,20 @@
 
     private async Task DeleteTask(TaskItem t)
     {
-        using var db = DbFactory.CreateDbContext();
-        db.Tasks.Remove(t);
-        await db.SaveChangesAsync();
-        await Load();
+        project?.Tasks.Remove(t);
+        if (project is not null) await ProjectStore.SaveProjectAsync(project);
     }
 
     private async Task AddTask()
     {
         if (string.IsNullOrWhiteSpace(newTaskText) || project is null) return;
-        using var db = DbFactory.CreateDbContext();
-        db.Tasks.Add(new TaskItem
+        project.Tasks.Add(new TaskItem
         {
             ProjectId = project.Id,
             Title = newTaskText,
             SortOrder = project.Tasks.Count
         });
-        await db.SaveChangesAsync();
+        await ProjectStore.SaveProjectAsync(project);
         newTaskText = "";
-        await Load();
     }
 }

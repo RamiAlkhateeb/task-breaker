@@ -1,34 +1,21 @@
+using Blazored.LocalStorage;
 using IdeaSplit.Shared.Data;
 using IdeaSplit.Shared.Services;
 using IdeaSplit.Web.Components;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
-
-var dbPath = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-    "ideasplit.db");
-
-builder.Services.AddDbContextFactory<AppDbContext>(o => o.UseSqlite($"Data Source={dbPath}"));
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
+builder.Services.AddBlazoredLocalStorage();
+builder.Services.AddScoped<IProjectStore, LocalStorageProjectStore>();
 builder.Services.AddScoped<SettingsService>();
-builder.Services.AddHttpClient<GeminiService>();
-builder.Services.AddHttpClient<WebSearchService>();
-
-var app = builder.Build();
-
-if (!app.Environment.IsDevelopment())
+builder.Services.AddScoped<GeminiService>();
+builder.Services.AddScoped<WebSearchService>();
+builder.Services.AddScoped(_ => new HttpClient
 {
-    app.UseExceptionHandler("/Error");
-    app.UseHsts();
-}
+    BaseAddress = new Uri("https://generativelanguage.googleapis.com/")
+});
 
-app.UseStaticFiles();
-app.UseAntiforgery();
-
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
-
-app.Run();
+await builder.Build().RunAsync();

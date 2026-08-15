@@ -1,24 +1,26 @@
 # IdeaSplit
 
-Complete, ready-to-run solution. Two projects: `IdeaSplit.Shared` (models, EF Core, Gemini/Settings services — reusable later by a MAUI project) and `IdeaSplit.Web` (Blazor Server app).
+IdeaSplit is a fully client-side Blazor WebAssembly app. Projects, settings, and API keys are stored in the browser's local storage; no backend or database is required.
 
-## Run it
+`IdeaSplit.Shared` contains reusable models, the browser project-store contract, and Gemini/search services. A future MAUI Blazor Hybrid app can reference it and provide platform-specific storage implementations.
 
-You need the .NET 8 SDK (`dotnet --version` should print `8.x`).
+## Run locally
+
+Install the .NET 8 SDK, then run:
 
 ```bash
-cd IdeaSplit
 dotnet restore
 dotnet run --project IdeaSplit.Web
 ```
 
-Open the URL shown in the console (defaults to `http://localhost:5080`). First screen is empty — go to **Settings**, paste a free Gemini key from https://aistudio.google.com/apikey, then **New project**.
+Open the URL shown in the console. Add a Gemini API key in Settings before creating a project. The optional Bing Web Search key enables the book chapter lookup fallback.
 
-The SQLite database is created automatically on first run at your OS's local app data folder (`ideasplit.db`).
+## Static deployment
 
-## Why a class library, not a Razor Class Library
-Nothing here is UI — models, EF Core, and the Gemini HTTP call are plain C#. A MAUI Blazor Hybrid project later references `IdeaSplit.Shared` the same way `IdeaSplit.Web` does; only the `.razor` pages get rebuilt for touch/mobile layout, and even those you can mostly copy over as-is.
+Publishing produces static files under `IdeaSplit.Web/bin/Release/net8.0/publish/wwwroot`:
 
-`SettingsService` here uses a local JSON file for the API key (web has no MAUI SecureStorage). When you add the MAUI project, swap its implementation for `SecureStorage` — same interface, so nothing else changes.
+```bash
+dotnet publish IdeaSplit.Web -c Release
+```
 
-Get a free Gemini key: https://aistudio.google.com/apikey
+Deploy that `wwwroot` folder to GitHub Pages, Cloudflare Pages, Netlify, or any other static host. For GitHub Pages project sites, update the `<base href="/">` value in `IdeaSplit.Web/wwwroot/index.html` to include the repository path (for example, `/IdeaSplit/`).

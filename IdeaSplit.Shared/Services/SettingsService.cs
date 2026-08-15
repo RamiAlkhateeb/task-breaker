@@ -1,55 +1,21 @@
+using Blazored.LocalStorage;
+
 namespace IdeaSplit.Shared.Services;
 
-/// <summary>
-/// Stores the Gemini API key. This file-based implementation works on Blazor Web.
-/// When the MAUI project is added, replace the body of these two methods with
-/// SecureStorage.Default.SetAsync/GetAsync — nothing else in the app needs to change.
-/// </summary>
+/// <summary>Browser-backed settings. A MAUI implementation can replace this service with SecureStorage.</summary>
 public class SettingsService
 {
-    private readonly string _path = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "ideasplit_settings.txt");
-    private readonly string _modelPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "ideasplit_model.txt");
-    private readonly string _searchKeyPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "ideasplit_search_key.txt");
+    private const string GeminiKey = "ideasplit_gemini_key";
+    private const string ModelKey = "ideasplit_model";
+    private const string SearchKey = "ideasplit_search_key";
+    private readonly ILocalStorageService _storage;
 
     public const string DefaultGeminiModel = "gemini-2.0-flash";
-
-    public Task<string?> GetGeminiApiKeyAsync()
-    {
-        if (!File.Exists(_path)) return Task.FromResult<string?>(null);
-        return Task.FromResult<string?>(File.ReadAllText(_path).Trim());
-    }
-
-    public async Task SaveGeminiApiKeyAsync(string apiKey)
-    {
-        await File.WriteAllTextAsync(_path, apiKey.Trim());
-    }
-
-    public Task<string> GetGeminiModelAsync()
-    {
-        if (!File.Exists(_modelPath)) return Task.FromResult(DefaultGeminiModel);
-
-        var model = File.ReadAllText(_modelPath).Trim();
-        return Task.FromResult(string.IsNullOrWhiteSpace(model) ? DefaultGeminiModel : model);
-    }
-
-    public async Task SaveGeminiModelAsync(string model)
-    {
-        await File.WriteAllTextAsync(_modelPath,
-            string.IsNullOrWhiteSpace(model) ? DefaultGeminiModel : model.Trim());
-    }
-
-    public Task<string?> GetWebSearchApiKeyAsync()
-    {
-        if (!File.Exists(_searchKeyPath)) return Task.FromResult<string?>(null);
-        return Task.FromResult<string?>(File.ReadAllText(_searchKeyPath).Trim());
-    }
-
-    public Task SaveWebSearchApiKeyAsync(string apiKey) =>
-        File.WriteAllTextAsync(_searchKeyPath, apiKey.Trim());
+    public SettingsService(ILocalStorageService storage) => _storage = storage;
+    public Task<string?> GetGeminiApiKeyAsync() => _storage.GetItemAsync<string?>(GeminiKey).AsTask();
+    public Task SaveGeminiApiKeyAsync(string apiKey) => _storage.SetItemAsync(GeminiKey, apiKey.Trim()).AsTask();
+    public async Task<string> GetGeminiModelAsync() => await _storage.GetItemAsync<string?>(ModelKey) ?? DefaultGeminiModel;
+    public Task SaveGeminiModelAsync(string model) => _storage.SetItemAsync(ModelKey, string.IsNullOrWhiteSpace(model) ? DefaultGeminiModel : model.Trim()).AsTask();
+    public Task<string?> GetWebSearchApiKeyAsync() => _storage.GetItemAsync<string?>(SearchKey).AsTask();
+    public Task SaveWebSearchApiKeyAsync(string apiKey) => _storage.SetItemAsync(SearchKey, apiKey.Trim()).AsTask();
 }

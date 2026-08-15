@@ -3,7 +3,6 @@
 @inject SettingsService SettingsService
 @inject GeminiService Gemini
 @inject NavigationManager Nav
-@inject IJSRuntime JS
 
 <div class="page-container">
     <button class="btn btn-link icon-button back-button" title="Back" aria-label="Back" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left"></i></button>
@@ -54,7 +53,6 @@
 @code {
     private string apiKey = "";
     private string searchApiKey = "";
-    private const string ModelStorageKey = "ideasplit_model";
     private string selectedModel = SettingsService.DefaultGeminiModel;
     private List<string> availableModels = [];
     private bool isLoadingModels;
@@ -64,23 +62,11 @@
     {
         apiKey = await SettingsService.GetGeminiApiKeyAsync() ?? "";
         searchApiKey = await SettingsService.GetWebSearchApiKeyAsync() ?? "";
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender) return;
-
-        var browserModel = await JS.InvokeAsync<string?>("localStorage.getItem", ModelStorageKey);
-        if (!string.IsNullOrWhiteSpace(browserModel))
-        {
-            selectedModel = browserModel;
-            await SettingsService.SaveGeminiModelAsync(selectedModel);
-        }
-
+        selectedModel = await SettingsService.GetGeminiModelAsync();
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
             await RefreshModels();
-            if (string.IsNullOrWhiteSpace(browserModel))
+            if (selectedModel == SettingsService.DefaultGeminiModel && availableModels.Count > 0)
             {
                 selectedModel = availableModels.FirstOrDefault(model =>
                     string.Equals(model, "gemini-3.5-flash-lite", StringComparison.OrdinalIgnoreCase))
@@ -89,8 +75,6 @@
                 await PersistModelAsync();
             }
         }
-
-        await InvokeAsync(StateHasChanged);
     }
 
     private async Task Save()
@@ -112,7 +96,6 @@
 
     private async Task PersistModelAsync()
     {
-        await JS.InvokeVoidAsync("localStorage.setItem", ModelStorageKey, selectedModel);
         await SettingsService.SaveGeminiModelAsync(selectedModel);
     }
 }

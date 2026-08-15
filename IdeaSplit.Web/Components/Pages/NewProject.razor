@@ -2,8 +2,7 @@
 @using IdeaSplit.Shared.Data
 @using IdeaSplit.Shared.Models
 @using IdeaSplit.Shared.Services
-@using Microsoft.EntityFrameworkCore
-@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IProjectStore ProjectStore
 @inject GeminiService Gemini
 @inject WebSearchService WebSearch
 @inject NavigationManager Nav
@@ -71,7 +70,6 @@
                 usedModel = result.Model;
             }
 
-            using var db = DbFactory.CreateDbContext();
             var project = new Project
             {
                 Title = isBook ? idea : idea.Length > 60 ? idea[..60] + "..." : idea,
@@ -79,8 +77,7 @@
                 IsBook = isBook,
                 Tasks = taskTitles.Select((title, index) => new TaskItem { Title = title, SortOrder = index }).ToList()
             };
-            db.Projects.Add(project);
-            await db.SaveChangesAsync();
+            await ProjectStore.SaveProjectAsync(project);
             var modelQuery = usedModel is null ? "" : $"?model={Uri.EscapeDataString(usedModel)}";
             Nav.NavigateTo($"/project/{project.Id}{modelQuery}");
         }
