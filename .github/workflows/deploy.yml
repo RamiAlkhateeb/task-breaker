@@ -23,8 +23,11 @@ jobs:
         run: dotnet publish IdeaSplit.Web/IdeaSplit.Web.csproj -c Release -o publish
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v3.14.1
+        env:
+          WRANGLER_LOG: debug
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # This must exactly match the Cloudflare Pages project name (case-sensitive).
           command: pages deploy publish/wwwroot --project-name=ideasplit
