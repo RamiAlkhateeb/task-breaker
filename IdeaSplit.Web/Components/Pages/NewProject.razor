@@ -9,42 +9,52 @@
 
 <div class="page-container">
     <h1>New project</h1>
-    <label class="book-toggle">
-        <input type="checkbox" @bind="isBook" />
-        <span><i class="bi bi-book" aria-hidden="true"></i> This is a book I want to read</span>
-    </label>
-    <p class="text-muted">@(isBook ? "Enter a book title and author to build a chapter checklist." : "Describe your idea in a sentence or two. It will be split into tasks.")</p>
-
-    @if (isBook)
+    @if (projectCreated)
     {
-        <input class="form-control" @bind="idea" placeholder="e.g. Dune by Frank Herbert" />
+        <div class="alert alert-success">Your project is ready with @createdTaskCount tasks. You can check it out on the home page.</div>
+        <button class="btn btn-primary action-button" @onclick='() => Nav.NavigateTo("/")'>OK</button>
     }
     else
     {
-        <textarea class="form-control" rows="3" @bind="idea" placeholder="e.g. Build a landing page for my app"></textarea>
-    }
+        <label class="book-toggle">
+            <input type="checkbox" @bind="isBook" />
+            <span><i class="bi bi-book" aria-hidden="true"></i> This is a book I want to read</span>
+        </label>
+        <p class="text-muted">@(isBook ? "Enter a book title and author to build a chapter checklist." : "Describe your idea in a sentence or two. It will be split into tasks.")</p>
 
-    @if (!string.IsNullOrEmpty(error))
-    {
-        <div class="alert alert-danger mt-3">@error</div>
-    }
-
-    <button class="btn btn-primary action-button mt-3" disabled="@(isLoading || string.IsNullOrWhiteSpace(idea))" @onclick="Generate">
-        @if (isLoading)
+        @if (isBook)
         {
-            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Creating checklist...</span>
+            <input class="form-control" @bind="idea" placeholder="e.g. Dune by Frank Herbert" />
         }
         else
         {
-            <span>@(isBook ? "Get chapters" : "Break it down")</span>
+            <textarea class="form-control" rows="3" @bind="idea" placeholder="e.g. Build a landing page for my app"></textarea>
         }
-    </button>
+
+        @if (!string.IsNullOrEmpty(error))
+        {
+            <div class="alert alert-danger mt-3">@error</div>
+        }
+
+        <button class="btn btn-primary action-button mt-3" disabled="@(isLoading || string.IsNullOrWhiteSpace(idea))" @onclick="Generate">
+            @if (isLoading)
+            {
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Creating checklist...</span>
+            }
+            else
+            {
+                <span>@(isBook ? "Get chapters" : "Break it down")</span>
+            }
+        </button>
+    }
 </div>
 
 @code {
     private string idea = "";
     private bool isBook;
     private bool isLoading;
+    private bool projectCreated;
+    private int createdTaskCount;
     private string? error;
 
     private async Task Generate()
@@ -54,7 +64,6 @@
         try
         {
             List<string> taskTitles;
-            string? usedModel = null;
             if (isBook)
             {
                 taskTitles = await Gemini.GetBookChaptersAsync(idea);
@@ -67,7 +76,6 @@
             {
                 var result = await Gemini.BreakDownIdeaAsync(idea);
                 taskTitles = result.Tasks;
-                usedModel = result.Model;
             }
 
             var project = new Project
@@ -78,8 +86,8 @@
                 Tasks = taskTitles.Select((title, index) => new TaskItem { Title = title, SortOrder = index }).ToList()
             };
             await ProjectStore.SaveProjectAsync(project);
-            var modelQuery = usedModel is null ? "" : $"?model={Uri.EscapeDataString(usedModel)}";
-            Nav.NavigateTo($"/project/{project.Id}{modelQuery}");
+            createdTaskCount = taskTitles.Count;
+            projectCreated = true;
         }
         catch (Exception ex)
         {
