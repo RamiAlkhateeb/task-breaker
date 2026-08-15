@@ -33,5 +33,5 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           # This prints the exact Pages projects available to the configured token.
-          npx --yes wrangler@4 pages project list
-          npx --yes wrangler@4 pages deploy publish/wwwroot --project-name=ideasplit
+          
+          npx --yes wrangler@4 pages deploy publish/wwwroot --project-name=task-breaker
