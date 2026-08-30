@@ -4,7 +4,7 @@
 @inject GeminiService Gemini
 @inject NavigationManager Nav
 
-<div class="page-container">
+<div class="page-container settings-page">
     <button class="btn btn-link icon-button back-button" title="Back" aria-label="Back" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left"></i></button>
     <h1>Settings</h1>
 
@@ -48,6 +48,18 @@
     }
 
     <button class="btn btn-primary icon-button" title="Save" aria-label="Save" @onclick="Save"><i class="bi bi-check-lg"></i></button>
+
+    <section class="about-section" aria-labelledby="about-heading">
+        <h2 id="about-heading">About IdeaSplit</h2>
+        <p>Turn ideas into clear, manageable tasks.</p>
+        <div class="team-member">
+            <span class="team-avatar" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
+            <div>
+                <strong>Rami Alkhateeb</strong>
+                <span>Developer</span>
+            </div>
+        </div>
+    </section>
 </div>
 
 @code {

@@ -18,7 +18,7 @@ body {
     background-image: radial-gradient(rgba(97, 71, 31, .16) .7px, transparent .7px), linear-gradient(135deg, rgba(255,255,255,.32), transparent 40%);
     background-size: 5px 5px, auto;
     color: var(--text);
-    font-family: "Patrick Hand", "Comic Sans MS", cursive;
+    font-family: "Patrick Hand", "Aref Ruqaa Ink", "Comic Sans MS", cursive;
     font-size: 1.18rem;
     letter-spacing: .01em;
 }
@@ -116,6 +116,50 @@ textarea.form-control { min-height: 120px; }
 .skeleton-title { width: 62%; height: 34px; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
+/* Settings prioritizes clarity over the handwritten notebook treatment. */
+.settings-page {
+    max-width: 680px;
+    background-color: #fffdf7;
+    background-image: none;
+    padding-left: 32px;
+}
+.settings-page::before { display: none; }
+.settings-page, .settings-page .form-control, .settings-page .form-select, .settings-page .btn {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    letter-spacing: normal;
+}
+.settings-page h1 {
+    font-family: inherit;
+    font-size: clamp(1.65rem, 6vw, 2rem);
+    letter-spacing: normal;
+}
+.settings-page h1::after { display: none; }
+.settings-page .form-label { color: #243b53; font-weight: 600; }
+.settings-page .form-control, .settings-page .form-select {
+    border: 1px solid #b8c5d1;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 1rem;
+}
+.settings-page .form-control:focus, .settings-page .form-select:focus {
+    border-color: #3974a8;
+    box-shadow: 0 0 0 .2rem rgba(57, 116, 168, .18);
+}
+.settings-page .form-hint { font-size: .9rem; }
+.about-section {
+    margin-top: 36px;
+    padding-top: 24px;
+    border-top: 1px solid #d8e0e7;
+    color: #526575;
+}
+.about-section h2 { margin: 0 0 4px; color: #243b53; font-size: 1.15rem; font-weight: 650; }
+.about-section p { margin: 0 0 16px; font-size: .95rem; }
+.team-member { display: flex; align-items: center; gap: 12px; }
+.team-avatar { display: inline-grid; width: 40px; height: 40px; place-items: center; border-radius: 50%; background: #e6f0f7; color: #3974a8; }
+.team-member strong, .team-member span:not(.team-avatar) { display: block; }
+.team-member strong { color: #243b53; font-size: .95rem; }
+.team-member span:not(.team-avatar) { color: #6e7e8c; font-size: .85rem; }
+
 @media (min-width: 576px) {
     .page-container { padding: 42px 42px 84px 78px; }
     .page-header { flex-direction: row; align-items: center; justify-content: space-between; }
@@ -128,6 +172,7 @@ textarea.form-control { min-height: 120px; }
     .page-container { padding-left: 54px; padding-right: 18px; }
     .page-container::before { left: 34px; }
     .floating-action-button { right: 18px; }
+    .settings-page { padding-left: 24px; }
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
