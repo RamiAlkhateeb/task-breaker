@@ -34,13 +34,13 @@
                 <input type="checkbox" checked="@t.IsDone" @onchange="() => ToggleTask(t)" />
                 @if (editingId == t.Id)
                 {
-                    <input class="form-control form-control-sm" @bind="editText" @bind:event="oninput"
+                    <input class="form-control form-control-sm" dir="auto" @bind="editText" @bind:event="oninput"
                            @onkeydown="@(e => OnEditKeyDown(e, t))" />
                     <button class="btn btn-outline-primary icon-button" title="Save" aria-label="Save" @onclick="() => SaveEdit(t)"><i class="bi bi-check-lg"></i></button>
                 }
                 else
                 {
-                    <span class="task-title @(t.IsDone ? "task-complete" : "")">@t.Title</span>
+                    <span class="task-title @(t.IsDone ? "task-complete" : "") @(ContainsArabic(t.Title) ? "arabic-text" : "")">@t.Title</span>
                     <button class="btn btn-link icon-button" title="Edit" aria-label="Edit" @onclick="() => StartEdit(t)"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-link text-danger icon-button" title="Delete" aria-label="Delete" @onclick="() => DeleteTask(t)"><i class="bi bi-trash"></i></button>
                 }
@@ -48,7 +48,7 @@
         }
 
         <div class="add-task-row">
-            <input class="form-control" placeholder="Add a task" @bind="newTaskText" @bind:event="oninput"
+            <input class="form-control" dir="auto" placeholder="Add a task" @bind="newTaskText" @bind:event="oninput"
                    @onkeydown="@(async e => { if (e.Key == "Enter") await AddTask(); })" />
             <button class="btn btn-outline-primary icon-button" title="Add" aria-label="Add" @onclick="AddTask"><i class="bi bi-plus-lg"></i></button>
         </div>
@@ -63,6 +63,13 @@
     private int? editingId;
     private string editText = "";
     private string newTaskText = "";
+
+    private static bool ContainsArabic(string text) => text.Any(character =>
+        (character >= '\u0600' && character <= '\u06FF') ||
+        (character >= '\u0750' && character <= '\u077F') ||
+        (character >= '\u08A0' && character <= '\u08FF') ||
+        (character >= '\uFB50' && character <= '\uFDFF') ||
+        (character >= '\uFE70' && character <= '\uFEFF'));
 
     protected override async Task OnInitializedAsync() => await Load();
 
