@@ -18,7 +18,7 @@ body {
     background-image: radial-gradient(rgba(97, 71, 31, .16) .7px, transparent .7px), linear-gradient(135deg, rgba(255,255,255,.32), transparent 40%);
     background-size: 5px 5px, auto;
     color: var(--text);
-    font-family: "Patrick Hand", "Reem Kufi Ink", "Comic Sans MS", cursive;
+    font-family: "Patrick Hand", "Noto Naskh Arabic", "Comic Sans MS", cursive;
     font-size: 1.18rem;
     letter-spacing: .01em;
 }
@@ -98,9 +98,9 @@ textarea.form-control { min-height: 120px; }
 .arabic-text {
     color: #263c5a;
     direction: rtl;
-    font-family: "Reem Kufi Ink", "Segoe UI", sans-serif;
-    font-size: 1.22em;
-    line-height: 1.35;
+    font-family: "Noto Naskh Arabic", "Segoe UI", sans-serif;
+    font-size: 1.1em;
+    line-height: 1.45;
     text-align: right;
     unicode-bidi: isolate;
 }
