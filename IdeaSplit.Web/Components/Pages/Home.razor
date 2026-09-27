@@ -46,9 +46,12 @@
                     <div class="project-title-row">
                         <h5 class="card-title mb-1">@p.Title</h5>
                         <div class="project-card-actions">
-                            @if (p.IsBook)
+                            @if (p.ScheduleDate is not null)
                             {
-                                <span class="book-badge" title="Reading project"><i class="bi bi-book" aria-hidden="true"></i><span>Book</span></span>
+                                <span class="task-due-badge" title="@(p.ScheduleType == IdeaSplit.Shared.Models.TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")">
+                                    <i class="bi @(p.ScheduleType == IdeaSplit.Shared.Models.TaskScheduleType.ProjectDeadline ? "bi-flag" : "bi-calendar3")" aria-hidden="true"></i>
+                                    @p.ScheduleDate.Value.ToString("MMM d")
+                                </span>
                             }
                             <button class="btn btn-link icon-button card-action" title="@(p.IsPinned ? "Unpin project" : "Pin project")" aria-label="@(p.IsPinned ? "Unpin project" : "Pin project")" @onclick="() => TogglePin(p.Id)" @onclick:stopPropagation="true"><i class="bi @(p.IsPinned ? "bi-pin-angle-fill" : "bi-pin-angle")"></i></button>
                             <button class="btn btn-link icon-button card-action delete-project-button" title="Delete project" aria-label="Delete project" @onclick="() => ConfirmDelete(p.Id)" @onclick:stopPropagation="true"><i class="bi bi-trash"></i></button>

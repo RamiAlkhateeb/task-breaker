@@ -17,8 +17,17 @@
     else
     {
         <button class="btn btn-link icon-button back-button" title="Back" aria-label="Back" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left"></i></button>
-        <h1>@project.Title @if (project.IsBook) { <i class="bi bi-book book-title-icon" title="Reading project" aria-label="Reading project"></i> }</h1>
-        <p class="text-muted">@project.DoneCount of @project.TotalCount tasks done</p>
+        <h1>@project.Title</h1>
+        <p class="text-muted">
+            @project.DoneCount of @project.TotalCount tasks done
+            @if (project.ScheduleDate is not null)
+            {
+                <span class="task-due-badge" title="@(project.ScheduleType == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")">
+                    <i class="bi @(project.ScheduleType == TaskScheduleType.ProjectDeadline ? "bi-flag" : "bi-calendar3")" aria-hidden="true"></i>
+                    @project.ScheduleDate.Value.ToString("MMM d")
+                </span>
+            }
+        </p>
         @if (!string.IsNullOrWhiteSpace(UsedModel))
         {
             <p class="form-hint">Tasks generated with @UsedModel.</p>
@@ -65,11 +74,11 @@
     private string newTaskText = "";
 
     private static bool ContainsArabic(string text) => text.Any(character =>
-        (character >= '\u0600' && character <= '\u06FF') ||
-        (character >= '\u0750' && character <= '\u077F') ||
-        (character >= '\u08A0' && character <= '\u08FF') ||
-        (character >= '\uFB50' && character <= '\uFDFF') ||
-        (character >= '\uFE70' && character <= '\uFEFF'));
+        (character >= '؀' && character <= 'ۿ') ||
+        (character >= 'ݐ' && character <= 'ݿ') ||
+        (character >= 'ࢠ' && character <= 'ࣿ') ||
+        (character >= 'ﭐ' && character <= '﷿') ||
+        (character >= 'ﹰ' && character <= '﻿'));
 
     protected override async Task OnInitializedAsync() => await Load();
 

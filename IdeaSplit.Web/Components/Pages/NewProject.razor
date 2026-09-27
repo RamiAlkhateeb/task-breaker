@@ -4,7 +4,6 @@
 @using IdeaSplit.Shared.Services
 @inject IProjectStore ProjectStore
 @inject GeminiService Gemini
-@inject WebSearchService WebSearch
 @inject NavigationManager Nav
 
 <div class="page-container">
@@ -16,20 +15,26 @@
     }
     else
     {
-        <label class="book-toggle">
-            <input type="checkbox" @bind="isBook" />
-            <span><i class="bi bi-book" aria-hidden="true"></i> This is a book I want to read</span>
-        </label>
-        <p class="text-muted">@(isBook ? "Enter a book title and author to build a chapter checklist." : "Describe your idea in a sentence or two. It will be split into tasks.")</p>
+        <p class="text-muted">Describe your idea in a sentence or two. It will be split into tasks.</p>
 
-        @if (isBook)
-        {
-            <input class="form-control" @bind="idea" placeholder="e.g. Dune by Frank Herbert" />
-        }
-        else
-        {
-            <textarea class="form-control" rows="3" @bind="idea" placeholder="e.g. Build a landing page for my app"></textarea>
-        }
+        <textarea class="form-control" rows="3" @bind="idea" placeholder="e.g. Build a landing page for my app"></textarea>
+
+        <label class="form-label mt-3" for="schedule-type">Project type</label>
+        <div id="schedule-type" class="schedule-type-toggle" role="radiogroup" aria-label="Project type">
+            <button type="button" class="schedule-type-btn @(scheduleType == TaskScheduleType.DayWeek ? "active" : "")"
+                    aria-pressed="@(scheduleType == TaskScheduleType.DayWeek)"
+                    @onclick='() => scheduleType = TaskScheduleType.DayWeek'>
+                <i class="bi bi-calendar3" aria-hidden="true"></i> Day project
+            </button>
+            <button type="button" class="schedule-type-btn @(scheduleType == TaskScheduleType.ProjectDeadline ? "active" : "")"
+                    aria-pressed="@(scheduleType == TaskScheduleType.ProjectDeadline)"
+                    @onclick='() => scheduleType = TaskScheduleType.ProjectDeadline'>
+                <i class="bi bi-flag" aria-hidden="true"></i> Project with a deadline
+            </button>
+        </div>
+
+        <label class="form-label mt-3" for="schedule-date">@(scheduleType == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")</label>
+        <input id="schedule-date" type="date" class="form-control" @bind="scheduleDate" />
 
         @if (!string.IsNullOrEmpty(error))
         {
@@ -43,7 +48,7 @@
             }
             else
             {
-                <span>@(isBook ? "Get chapters" : "Break it down")</span>
+                <span>Break it down</span>
             }
         </button>
     }
@@ -51,7 +56,8 @@
 
 @code {
     private string idea = "";
-    private bool isBook;
+    private TaskScheduleType scheduleType = TaskScheduleType.DayWeek;
+    private DateTime? scheduleDate;
     private bool isLoading;
     private bool projectCreated;
     private int createdTaskCount;
@@ -63,26 +69,15 @@
         error = null;
         try
         {
-            List<string> taskTitles;
-            if (isBook)
-            {
-                taskTitles = await Gemini.GetBookChaptersAsync(idea);
-                if (taskTitles.Count < 2)
-                    taskTitles = await WebSearch.SearchBookTableOfContentsAsync(idea);
-                if (taskTitles.Count < 2)
-                    throw new InvalidOperationException("No reliable table of contents was found. Check the title and author, or configure a Bing Web Search API key in Settings.");
-            }
-            else
-            {
-                var result = await Gemini.BreakDownIdeaAsync(idea);
-                taskTitles = result.Tasks;
-            }
+            var result = await Gemini.BreakDownIdeaAsync(idea);
+            var taskTitles = result.Tasks;
 
             var project = new Project
             {
-                Title = isBook ? idea : idea.Length > 60 ? idea[..60] + "..." : idea,
+                Title = idea.Length > 60 ? idea[..60] + "..." : idea,
                 OriginalIdea = idea,
-                IsBook = isBook,
+                ScheduleType = scheduleType,
+                ScheduleDate = scheduleDate,
                 Tasks = taskTitles.Select((title, index) => new TaskItem { Title = title, SortOrder = index }).ToList()
             };
             await ProjectStore.SaveProjectAsync(project);

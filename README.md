@@ -2,7 +2,7 @@
 
 IdeaSplit is a fully client-side Blazor WebAssembly app. Projects, settings, and API keys are stored in the browser's local storage; no backend or database is required.
 
-`IdeaSplit.Shared` contains reusable models, the browser project-store contract, and Gemini/search services. A future MAUI Blazor Hybrid app can reference it and provide platform-specific storage implementations.
+`IdeaSplit.Shared` contains reusable models, the browser project-store contract, and the Gemini service. A future MAUI Blazor Hybrid app can reference it and provide platform-specific storage implementations.
 
 ## Run locally
 
@@ -13,7 +13,7 @@ dotnet restore
 dotnet run --project IdeaSplit.Web
 ```
 
-Open the URL shown in the console. Add a Gemini API key in Settings before creating a project. The optional Bing Web Search key enables the book chapter lookup fallback.
+Open the URL shown in the console. Add a Gemini API key in Settings before creating a project.
 
 ## Static deployment
 

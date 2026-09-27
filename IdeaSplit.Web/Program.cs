@@ -12,7 +12,6 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<IProjectStore, LocalStorageProjectStore>();
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<GeminiService>();
-builder.Services.AddScoped<WebSearchService>();
 builder.Services.AddScoped(_ => new HttpClient
 {
     BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)

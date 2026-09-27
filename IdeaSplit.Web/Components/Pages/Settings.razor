@@ -15,10 +15,6 @@
         <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a>.
     </p>
 
-    <label class="form-label" for="search-key">Bing Web Search API key <span class="text-muted">(optional)</span></label>
-    <input id="search-key" type="password" class="form-control" @bind="searchApiKey" placeholder="Used only for book chapter fallback" />
-    <p class="form-hint">Used to look up a book table of contents when Gemini cannot verify one.</p>
-
     <div class="model-heading">
         <label class="form-label mb-0" for="model">Model</label>
         <button class="btn btn-outline-secondary icon-button" title="Refresh models" aria-label="Refresh models" disabled="@isLoadingModels" @onclick="RefreshModels"><i class="bi bi-arrow-clockwise"></i></button>
@@ -64,7 +60,6 @@
 
 @code {
     private string apiKey = "";
-    private string searchApiKey = "";
     private string selectedModel = SettingsService.DefaultGeminiModel;
     private List<string> availableModels = [];
     private bool isLoadingModels;
@@ -73,7 +68,6 @@
     protected override async Task OnInitializedAsync()
     {
         apiKey = await SettingsService.GetGeminiApiKeyAsync() ?? "";
-        searchApiKey = await SettingsService.GetWebSearchApiKeyAsync() ?? "";
         selectedModel = await SettingsService.GetGeminiModelAsync();
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
@@ -92,7 +86,6 @@
     private async Task Save()
     {
         await SettingsService.SaveGeminiApiKeyAsync(apiKey);
-        await SettingsService.SaveWebSearchApiKeyAsync(searchApiKey);
         await PersistModelAsync();
         saved = true;
         if (!string.IsNullOrWhiteSpace(apiKey)) await RefreshModels();
