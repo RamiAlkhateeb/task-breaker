@@ -4,7 +4,6 @@
 @using IdeaSplit.Shared.Services
 @inject IProjectStore ProjectStore
 @inject GeminiService Gemini
-@inject WebSearchService WebSearch
 @inject NavigationManager Nav
 
 <div class="page-container">
@@ -16,20 +15,9 @@
     }
     else
     {
-        <label class="book-toggle">
-            <input type="checkbox" @bind="isBook" />
-            <span><i class="bi bi-book" aria-hidden="true"></i> This is a book I want to read</span>
-        </label>
-        <p class="text-muted">@(isBook ? "Enter a book title and author to build a chapter checklist." : "Describe your idea in a sentence or two. It will be split into tasks.")</p>
+        <p class="text-muted">Describe your idea in a sentence or two. It will be split into tasks.</p>
 
-        @if (isBook)
-        {
-            <input class="form-control" @bind="idea" placeholder="e.g. Dune by Frank Herbert" />
-        }
-        else
-        {
-            <textarea class="form-control" rows="3" @bind="idea" placeholder="e.g. Build a landing page for my app"></textarea>
-        }
+        <textarea class="form-control" rows="3" @bind="idea" placeholder="e.g. Build a landing page for my app"></textarea>
 
         @if (!string.IsNullOrEmpty(error))
         {
@@ -43,7 +31,7 @@
             }
             else
             {
-                <span>@(isBook ? "Get chapters" : "Break it down")</span>
+                <span>Break it down</span>
             }
         </button>
     }
@@ -51,7 +39,6 @@
 
 @code {
     private string idea = "";
-    private bool isBook;
     private bool isLoading;
     private bool projectCreated;
     private int createdTaskCount;
@@ -63,26 +50,13 @@
         error = null;
         try
         {
-            List<string> taskTitles;
-            if (isBook)
-            {
-                taskTitles = await Gemini.GetBookChaptersAsync(idea);
-                if (taskTitles.Count < 2)
-                    taskTitles = await WebSearch.SearchBookTableOfContentsAsync(idea);
-                if (taskTitles.Count < 2)
-                    throw new InvalidOperationException("No reliable table of contents was found. Check the title and author, or configure a Bing Web Search API key in Settings.");
-            }
-            else
-            {
-                var result = await Gemini.BreakDownIdeaAsync(idea);
-                taskTitles = result.Tasks;
-            }
+            var result = await Gemini.BreakDownIdeaAsync(idea);
+            var taskTitles = result.Tasks;
 
             var project = new Project
             {
-                Title = isBook ? idea : idea.Length > 60 ? idea[..60] + "..." : idea,
+                Title = idea.Length > 60 ? idea[..60] + "..." : idea,
                 OriginalIdea = idea,
-                IsBook = isBook,
                 Tasks = taskTitles.Select((title, index) => new TaskItem { Title = title, SortOrder = index }).ToList()
             };
             await ProjectStore.SaveProjectAsync(project);

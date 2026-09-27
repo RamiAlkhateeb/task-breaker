@@ -84,27 +84,6 @@ public class GeminiService
             lastError);
     }
 
-    public async Task<List<string>> GetBookChaptersAsync(string bookTitle)
-    {
-        var apiKey = await _settings.GetGeminiApiKeyAsync();
-        if (string.IsNullOrWhiteSpace(apiKey))
-            throw new InvalidOperationException("No Gemini API key set. Add one in Settings.");
-
-        foreach (var model in await GetModelsToTryAsync())
-        {
-            try
-            {
-                return await GenerateBookChaptersAsync(bookTitle, model, apiKey);
-            }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException)
-            {
-                _logger.LogWarning(ex, "Gemini model {Model} could not retrieve chapters for {BookTitle}.", model, bookTitle);
-            }
-        }
-
-        return [];
-    }
-
     private async Task<IEnumerable<string>> GetModelsToTryAsync()
     {
         var selectedModel = await _settings.GetGeminiModelAsync();
@@ -151,37 +130,6 @@ public class GeminiService
         return parsed.Tasks;
     }
 
-    private async Task<List<string>> GenerateBookChaptersAsync(string bookTitle, string model, string apiKey)
-    {
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(model)}:generateContent?key={Uri.EscapeDataString(apiKey)}";
-        var prompt = $"""
-            Give the actual table of contents or chapter titles for this specific book: "{bookTitle}".
-            Only return chapters you reliably know are real. Never invent chapter names. If you do not
-            have reliable knowledge of this exact book, return an empty chapters array.
-            """;
-        var body = new
-        {
-            contents = new[] { new { parts = new[] { new { text = prompt } } } },
-            generationConfig = new
-            {
-                response_mime_type = "application/json",
-                response_schema = new
-                {
-                    type = "OBJECT",
-                    properties = new { chapters = new { type = "ARRAY", items = new { type = "STRING" } } },
-                    required = new[] { "chapters" }
-                }
-            }
-        };
-
-        using var response = await _http.PostAsJsonAsync(url, body);
-        response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<GeminiResponse>();
-        var text = result?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text
-            ?? throw new InvalidOperationException("Gemini returned no content.");
-        return JsonSerializer.Deserialize<ChapterListResult>(text)?.Chapters ?? [];
-    }
-
     private sealed class ModelListResponse { [JsonPropertyName("models")] public List<GeminiModel>? Models { get; set; } }
     private sealed class GeminiModel
     {
@@ -189,7 +137,6 @@ public class GeminiService
         [JsonPropertyName("supportedGenerationMethods")] public List<string>? SupportedGenerationMethods { get; set; }
     }
     private sealed class TaskListResult { [JsonPropertyName("tasks")] public List<string> Tasks { get; set; } = []; }
-    private sealed class ChapterListResult { [JsonPropertyName("chapters")] public List<string> Chapters { get; set; } = []; }
     private sealed class GeminiResponse { [JsonPropertyName("candidates")] public List<Candidate>? Candidates { get; set; } }
     private sealed class Candidate { [JsonPropertyName("content")] public Content? Content { get; set; } }
     private sealed class Content { [JsonPropertyName("parts")] public List<Part>? Parts { get; set; } }
