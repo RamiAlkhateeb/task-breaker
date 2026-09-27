@@ -18,7 +18,16 @@
     {
         <button class="btn btn-link icon-button back-button" title="Back" aria-label="Back" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left"></i></button>
         <h1>@project.Title</h1>
-        <p class="text-muted">@project.DoneCount of @project.TotalCount tasks done</p>
+        <p class="text-muted">
+            @project.DoneCount of @project.TotalCount tasks done
+            @if (project.ScheduleDate is not null)
+            {
+                <span class="task-due-badge" title="@(project.ScheduleType == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")">
+                    <i class="bi @(project.ScheduleType == TaskScheduleType.ProjectDeadline ? "bi-flag" : "bi-calendar3")" aria-hidden="true"></i>
+                    @project.ScheduleDate.Value.ToString("MMM d")
+                </span>
+            }
+        </p>
         @if (!string.IsNullOrWhiteSpace(UsedModel))
         {
             <p class="form-hint">Tasks generated with @UsedModel.</p>
@@ -41,39 +50,16 @@
                 else
                 {
                     <span class="task-title @(t.IsDone ? "task-complete" : "") @(ContainsArabic(t.Title) ? "arabic-text" : "")">@t.Title</span>
-                    @if (t.DueDate is not null)
-                    {
-                        <span class="task-due-badge" title="@(t.ScheduleType == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")">
-                            <i class="bi @(t.ScheduleType == TaskScheduleType.ProjectDeadline ? "bi-flag" : "bi-calendar3") " aria-hidden="true"></i>
-                            @t.DueDate.Value.ToString("MMM d")
-                        </span>
-                    }
                     <button class="btn btn-link icon-button" title="Edit" aria-label="Edit" @onclick="() => StartEdit(t)"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-link text-danger icon-button" title="Delete" aria-label="Delete" @onclick="() => DeleteTask(t)"><i class="bi bi-trash"></i></button>
                 }
             </div>
         }
 
-        <div class="add-task-form">
-            <input class="form-control" dir="auto" placeholder="Add a task" @bind="newTaskText" @bind:event="oninput" />
-
-            <div class="schedule-type-toggle" role="radiogroup" aria-label="Task type">
-                <button type="button" class="schedule-type-btn @(newTaskScheduleType == TaskScheduleType.DayWeek ? "active" : "")"
-                        aria-pressed="@(newTaskScheduleType == TaskScheduleType.DayWeek)"
-                        @onclick='() => newTaskScheduleType = TaskScheduleType.DayWeek'>
-                    <i class="bi bi-calendar3" aria-hidden="true"></i> Day/Week
-                </button>
-                <button type="button" class="schedule-type-btn @(newTaskScheduleType == TaskScheduleType.ProjectDeadline ? "active" : "")"
-                        aria-pressed="@(newTaskScheduleType == TaskScheduleType.ProjectDeadline)"
-                        @onclick='() => newTaskScheduleType = TaskScheduleType.ProjectDeadline'>
-                    <i class="bi bi-flag" aria-hidden="true"></i> Project deadline
-                </button>
-            </div>
-
-            <label class="form-label mb-1" for="new-task-date">@(newTaskScheduleType == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")</label>
-            <input id="new-task-date" type="date" class="form-control" @bind="newTaskDueDate" />
-
-            <button class="btn btn-outline-primary action-button" title="Add task" @onclick="AddTask"><i class="bi bi-plus-lg"></i> Add task</button>
+        <div class="add-task-row">
+            <input class="form-control" dir="auto" placeholder="Add a task" @bind="newTaskText" @bind:event="oninput"
+                   @onkeydown="@(async e => { if (e.Key == "Enter") await AddTask(); })" />
+            <button class="btn btn-outline-primary icon-button" title="Add" aria-label="Add" @onclick="AddTask"><i class="bi bi-plus-lg"></i></button>
         </div>
     }
 </div>
@@ -86,8 +72,6 @@
     private int? editingId;
     private string editText = "";
     private string newTaskText = "";
-    private TaskScheduleType newTaskScheduleType = TaskScheduleType.DayWeek;
-    private DateTime? newTaskDueDate;
 
     private static bool ContainsArabic(string text) => text.Any(character =>
         (character >= '؀' && character <= 'ۿ') ||
@@ -140,12 +124,9 @@
         {
             ProjectId = project.Id,
             Title = newTaskText,
-            SortOrder = project.Tasks.Count,
-            ScheduleType = newTaskScheduleType,
-            DueDate = newTaskDueDate
+            SortOrder = project.Tasks.Count
         });
         await ProjectStore.SaveProjectAsync(project);
         newTaskText = "";
-        newTaskDueDate = null;
     }
 }

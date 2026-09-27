@@ -19,6 +19,23 @@
 
         <textarea class="form-control" rows="3" @bind="idea" placeholder="e.g. Build a landing page for my app"></textarea>
 
+        <label class="form-label mt-3" for="schedule-type">Project type</label>
+        <div id="schedule-type" class="schedule-type-toggle" role="radiogroup" aria-label="Project type">
+            <button type="button" class="schedule-type-btn @(scheduleType == TaskScheduleType.DayWeek ? "active" : "")"
+                    aria-pressed="@(scheduleType == TaskScheduleType.DayWeek)"
+                    @onclick='() => scheduleType = TaskScheduleType.DayWeek'>
+                <i class="bi bi-calendar3" aria-hidden="true"></i> Day project
+            </button>
+            <button type="button" class="schedule-type-btn @(scheduleType == TaskScheduleType.ProjectDeadline ? "active" : "")"
+                    aria-pressed="@(scheduleType == TaskScheduleType.ProjectDeadline)"
+                    @onclick='() => scheduleType = TaskScheduleType.ProjectDeadline'>
+                <i class="bi bi-flag" aria-hidden="true"></i> Project with a deadline
+            </button>
+        </div>
+
+        <label class="form-label mt-3" for="schedule-date">@(scheduleType == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")</label>
+        <input id="schedule-date" type="date" class="form-control" @bind="scheduleDate" />
+
         @if (!string.IsNullOrEmpty(error))
         {
             <div class="alert alert-danger mt-3">@error</div>
@@ -39,6 +56,8 @@
 
 @code {
     private string idea = "";
+    private TaskScheduleType scheduleType = TaskScheduleType.DayWeek;
+    private DateTime? scheduleDate;
     private bool isLoading;
     private bool projectCreated;
     private int createdTaskCount;
@@ -57,6 +76,8 @@
             {
                 Title = idea.Length > 60 ? idea[..60] + "..." : idea,
                 OriginalIdea = idea,
+                ScheduleType = scheduleType,
+                ScheduleDate = scheduleDate,
                 Tasks = taskTitles.Select((title, index) => new TaskItem { Title = title, SortOrder = index }).ToList()
             };
             await ProjectStore.SaveProjectAsync(project);

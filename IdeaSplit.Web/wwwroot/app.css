@@ -116,7 +116,7 @@ textarea.form-control { min-height: 120px; }
     unicode-bidi: isolate;
 }
 .task-complete { color: var(--color-text-secondary); text-decoration: line-through; transition: color .2s ease; }
-.add-task-form { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--color-border); }
+.add-task-row { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; }
 .schedule-type-toggle { display: inline-flex; background: var(--color-page); padding: 4px; border-radius: var(--radius-md); gap: 4px; }
 .schedule-type-btn {
     flex: 1;
@@ -169,7 +169,9 @@ textarea.form-control { min-height: 120px; }
 @media (min-width: 576px) {
     .page-container { padding: 42px; }
     .page-header { flex-direction: row; align-items: center; justify-content: space-between; }
-    .add-task-form .form-control:first-child { flex: 1; }
+    .add-task-row { flex-direction: row; }
+    .add-task-row .form-control { flex: 1; }
+    .add-task-row .btn { width: auto; min-width: 44px; }
 }
 
 @media (max-width: 575.98px) {
