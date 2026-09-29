@@ -44,8 +44,8 @@
         {
             <div class="card project-card" style="@CardAccent(p)" @onclick='() => Nav.NavigateTo($"/project/{p.Id}")'>
                 <div class="card-body">
-                    <div class="project-title-row">
-                        <h5 class="card-title mb-1">@p.Title</h5>
+                    <h5 class="card-title mb-1">@p.Title</h5>
+                    <div class="project-card-footer">
                         <div class="project-card-actions">
                             @if (p.ScheduleDate is not null)
                             {
