@@ -50,7 +50,7 @@
             <div class="progress-bar" style="width:@(project.ProgressPercent)%"></div>
         </div>
 
-        @foreach (var t in project.Tasks.Where(t => t.ParentTaskId is null).OrderBy(t => t.SortOrder))
+        @foreach (var t in project.Tasks.Where(t => t.ParentTaskId is null).OrderBy(t => t.IsDone).ThenBy(t => t.SortOrder))
         {
             <div class="task-row">
                 <input type="checkbox" checked="@t.IsDone" @onchange="() => ToggleTask(t)" />
@@ -69,7 +69,7 @@
                 }
             </div>
 
-            @foreach (var sub in project.Tasks.Where(c => c.ParentTaskId == t.Id).OrderBy(c => c.SortOrder))
+            @foreach (var sub in project.Tasks.Where(c => c.ParentTaskId == t.Id).OrderBy(c => c.IsDone).ThenBy(c => c.SortOrder))
             {
                 <div class="task-row subtask-row">
                     <input type="checkbox" checked="@sub.IsDone" @onchange="() => ToggleTask(sub)" />

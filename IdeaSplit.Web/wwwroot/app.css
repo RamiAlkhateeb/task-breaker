@@ -58,7 +58,8 @@ a:hover, .btn-link:hover { color: var(--color-primary-hover); }
 .project-card:hover { border-color: var(--card-accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .project-card:active { transform: translateY(0); }
 .project-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.project-card-actions { display: flex; align-items: center; gap: 4px; margin: -8px -8px 0 0; }
+.project-card-footer { display: flex; align-items: center; justify-content: flex-end; margin: 0 0 4px; }
+.project-card-actions { display: flex; align-items: center; gap: 4px; margin: 0 -8px 0 0; }
 .project-card .card-action { color: var(--card-accent); }
 .project-card .card-action:hover { color: var(--color-text-main); background: var(--color-primary-light); }
 .delete-project-button { color: var(--color-danger) !important; }
