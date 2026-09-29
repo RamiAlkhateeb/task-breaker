@@ -1,0 +1,72 @@
+@page "/archive"
+@using IdeaSplit.Shared.Data
+@using IdeaSplit.Shared.Models
+@inject IProjectStore ProjectStore
+@inject NavigationManager Nav
+
+<div class="page-container">
+    <button class="btn btn-link icon-button back-button" title="Back" aria-label="Back" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left"></i></button>
+    <h1>Archive</h1>
+
+    @if (projects is null)
+    {
+        <div class="loading-stack" aria-label="Loading archived projects" role="status">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <span class="visually-hidden">Loading archived projects</span>
+        </div>
+    }
+    else if (projects.Count == 0)
+    {
+        <div class="empty-state">
+            <h2>No archived projects</h2>
+            <p>Completed projects show up here automatically.</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var p in projects)
+        {
+            <div class="card project-card">
+                <div class="card-body">
+                    <div class="project-title-row">
+                        <h5 class="card-title mb-1">@p.Title</h5>
+                        <div class="project-card-actions">
+                            @if (p.ScheduleDate is not null)
+                            {
+                                <span class="task-due-badge" title="@(p.ScheduleType == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")">
+                                    <i class="bi @(p.ScheduleType == TaskScheduleType.ProjectDeadline ? "bi-flag" : "bi-calendar3")" aria-hidden="true"></i>
+                                    @p.ScheduleDate.Value.ToString("MMM d")
+                                </span>
+                            }
+                            <button class="btn btn-link icon-button card-action" title="Unarchive project" aria-label="Unarchive project" @onclick="() => Unarchive(p.Id)"><i class="bi bi-box-arrow-up"></i></button>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-2">@p.DoneCount of @p.TotalCount tasks done</p>
+                    <div class="progress-summary"><span>@p.ProgressPercent.ToString("F1")%</span></div>
+                    <div class="progress task-progress">
+                        <div class="progress-bar" style="width:@(p.ProgressPercent)%"></div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<Project>? projects;
+
+    protected override async Task OnInitializedAsync() => await LoadProjects();
+
+    private async Task LoadProjects() =>
+        projects = (await ProjectStore.GetProjectsAsync())
+            .Where(project => project.IsArchived)
+            .OrderByDescending(project => project.CreatedAt)
+            .ToList();
+
+    private async Task Unarchive(int projectId)
+    {
+        await ProjectStore.SetArchivedAsync(projectId, false);
+        await LoadProjects();
+    }
+}

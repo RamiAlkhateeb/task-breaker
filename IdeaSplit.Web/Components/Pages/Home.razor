@@ -10,6 +10,7 @@
     <div class="page-header">
         <h1>Your projects</h1>
         <div class="header-actions">
+            <button class="btn btn-outline-secondary icon-button" title="Archive" aria-label="Archive" @onclick='() => Nav.NavigateTo("/archive")'><i class="bi bi-archive"></i></button>
             <button class="btn btn-outline-secondary icon-button" title="Settings" aria-label="Settings" @onclick='() => Nav.NavigateTo("/settings")'><i class="bi bi-gear"></i></button>
         </div>
     </div>
@@ -80,6 +81,7 @@
 
     private async Task LoadProjects() =>
         projects = (await ProjectStore.GetProjectsAsync())
+            .Where(project => !project.IsArchived)
             .OrderByDescending(project => project.IsPinned)
             .ThenByDescending(project => project.CreatedAt)
             .ToList();

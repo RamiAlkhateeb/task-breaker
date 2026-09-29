@@ -84,6 +84,31 @@ public class GeminiService
             lastError);
     }
 
+    public async Task<string> GenerateTitleAsync(string idea)
+    {
+        var apiKey = await _settings.GetGeminiApiKeyAsync();
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException("No Gemini API key set. Add one in Settings.");
+
+        var modelsToTry = await GetModelsToTryAsync();
+        Exception? lastError = null;
+
+        foreach (var model in modelsToTry)
+        {
+            try
+            {
+                return await GenerateTitleCoreAsync(idea, model, apiKey);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException)
+            {
+                lastError = ex;
+                _logger.LogWarning(ex, "Gemini model {Model} failed to generate a title; trying the next fallback.", model);
+            }
+        }
+
+        throw new InvalidOperationException("None of the configured Gemini models could generate a title.", lastError);
+    }
+
     private async Task<IEnumerable<string>> GetModelsToTryAsync()
     {
         var selectedModel = await _settings.GetGeminiModelAsync();
@@ -130,6 +155,41 @@ public class GeminiService
         return parsed.Tasks;
     }
 
+    private async Task<string> GenerateTitleCoreAsync(string idea, string model, string apiKey)
+    {
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(model)}:generateContent?key={Uri.EscapeDataString(apiKey)}";
+        var prompt = $"""
+            Give a concise 2 to 3 word title that summarizes this idea. No punctuation besides spaces.
+
+            Idea: {idea}
+            """;
+        var body = new
+        {
+            contents = new[] { new { parts = new[] { new { text = prompt } } } },
+            generationConfig = new
+            {
+                response_mime_type = "application/json",
+                response_schema = new
+                {
+                    type = "OBJECT",
+                    properties = new { title = new { type = "STRING" } },
+                    required = new[] { "title" }
+                }
+            }
+        };
+
+        using var response = await _http.PostAsJsonAsync(url, body);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<GeminiResponse>();
+        var text = result?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text
+            ?? throw new InvalidOperationException("Gemini returned no content.");
+        var title = JsonSerializer.Deserialize<TitleResult>(text)?.Title?.Trim();
+        if (string.IsNullOrWhiteSpace(title))
+            throw new InvalidOperationException("Gemini returned an empty title.");
+
+        return title;
+    }
+
     private sealed class ModelListResponse { [JsonPropertyName("models")] public List<GeminiModel>? Models { get; set; } }
     private sealed class GeminiModel
     {
@@ -137,6 +197,7 @@ public class GeminiService
         [JsonPropertyName("supportedGenerationMethods")] public List<string>? SupportedGenerationMethods { get; set; }
     }
     private sealed class TaskListResult { [JsonPropertyName("tasks")] public List<string> Tasks { get; set; } = []; }
+    private sealed class TitleResult { [JsonPropertyName("title")] public string Title { get; set; } = ""; }
     private sealed class GeminiResponse { [JsonPropertyName("candidates")] public List<Candidate>? Candidates { get; set; } }
     private sealed class Candidate { [JsonPropertyName("content")] public Content? Content { get; set; } }
     private sealed class Content { [JsonPropertyName("parts")] public List<Part>? Parts { get; set; } }
