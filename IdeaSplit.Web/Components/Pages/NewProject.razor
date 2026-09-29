@@ -69,12 +69,15 @@
         error = null;
         try
         {
-            var result = await Gemini.BreakDownIdeaAsync(idea);
-            var taskTitles = result.Tasks;
+            var breakdownTask = Gemini.BreakDownIdeaAsync(idea);
+            var titleTask = GenerateTitleSafeAsync(idea);
+            await Task.WhenAll(breakdownTask, titleTask);
+
+            var taskTitles = breakdownTask.Result.Tasks;
 
             var project = new Project
             {
-                Title = idea.Length > 60 ? idea[..60] + "..." : idea,
+                Title = titleTask.Result + ScheduleSuffix(),
                 OriginalIdea = idea,
                 ScheduleType = scheduleType,
                 ScheduleDate = scheduleDate,
@@ -92,5 +95,25 @@
         {
             isLoading = false;
         }
+    }
+
+    private async Task<string> GenerateTitleSafeAsync(string ideaText)
+    {
+        try
+        {
+            return await Gemini.GenerateTitleAsync(ideaText);
+        }
+        catch (Exception)
+        {
+            return ideaText.Length > 60 ? ideaText[..60] + "..." : ideaText;
+        }
+    }
+
+    private string ScheduleSuffix()
+    {
+        if (scheduleDate is null) return "";
+        return scheduleType == TaskScheduleType.ProjectDeadline
+            ? $" — Due {scheduleDate.Value:MMM d}"
+            : $" — {scheduleDate.Value:MMM d}";
     }
 }

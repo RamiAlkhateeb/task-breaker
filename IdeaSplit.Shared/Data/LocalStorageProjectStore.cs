@@ -30,6 +30,16 @@ public class LocalStorageProjectStore : IProjectStore
         await _storage.SetItemAsync(ProjectsKey, projects);
     }
 
+    public async Task SetArchivedAsync(int projectId, bool archived)
+    {
+        var projects = await GetProjectsAsync();
+        var project = projects.FirstOrDefault(existing => existing.Id == projectId);
+        if (project is null) return;
+
+        project.IsArchived = archived;
+        await _storage.SetItemAsync(ProjectsKey, projects);
+    }
+
     public async Task SaveProjectAsync(Project project)
     {
         var projects = await GetProjectsAsync();

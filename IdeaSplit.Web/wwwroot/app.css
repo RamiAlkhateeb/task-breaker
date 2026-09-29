@@ -94,6 +94,11 @@ textarea.form-control { min-height: 120px; }
 .task-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px 0 15px; border-bottom: 1px solid var(--color-border); }
 .task-row input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--color-primary); transition: transform .15s ease; }
 .task-row input[type="checkbox"]:active { transform: scale(.85); }
+.subtask-row { padding: 10px 0 11px 34px; border-bottom: 1px dashed var(--color-border); }
+.subtask-row input[type="checkbox"] { width: 18px; height: 18px; }
+.subtask-row .task-title { font-size: .92rem; color: var(--color-text-secondary); }
+.add-subtask-row { display: flex; gap: 8px; padding: 8px 0 8px 34px; }
+.add-subtask-row .form-control { flex: 1; }
 .task-title { flex: 1 1 150px; }
 .task-due-badge {
     display: inline-flex;

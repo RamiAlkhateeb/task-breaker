@@ -37,7 +37,7 @@
             <div class="progress-bar" style="width:@(project.ProgressPercent)%"></div>
         </div>
 
-        @foreach (var t in project.Tasks.OrderBy(t => t.SortOrder))
+        @foreach (var t in project.Tasks.Where(t => t.ParentTaskId is null).OrderBy(t => t.SortOrder))
         {
             <div class="task-row">
                 <input type="checkbox" checked="@t.IsDone" @onchange="() => ToggleTask(t)" />
@@ -50,10 +50,39 @@
                 else
                 {
                     <span class="task-title @(t.IsDone ? "task-complete" : "") @(ContainsArabic(t.Title) ? "arabic-text" : "")">@t.Title</span>
+                    <button class="btn btn-link icon-button" title="Add subtask" aria-label="Add subtask" @onclick="() => ToggleAddSubtask(t)"><i class="bi bi-plus-lg"></i></button>
                     <button class="btn btn-link icon-button" title="Edit" aria-label="Edit" @onclick="() => StartEdit(t)"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-link text-danger icon-button" title="Delete" aria-label="Delete" @onclick="() => DeleteTask(t)"><i class="bi bi-trash"></i></button>
                 }
             </div>
+
+            @foreach (var sub in project.Tasks.Where(c => c.ParentTaskId == t.Id).OrderBy(c => c.SortOrder))
+            {
+                <div class="task-row subtask-row">
+                    <input type="checkbox" checked="@sub.IsDone" @onchange="() => ToggleTask(sub)" />
+                    @if (editingId == sub.Id)
+                    {
+                        <input class="form-control form-control-sm" dir="auto" @bind="editText" @bind:event="oninput"
+                               @onkeydown="@(e => OnEditKeyDown(e, sub))" />
+                        <button class="btn btn-outline-primary icon-button" title="Save" aria-label="Save" @onclick="() => SaveEdit(sub)"><i class="bi bi-check-lg"></i></button>
+                    }
+                    else
+                    {
+                        <span class="task-title @(sub.IsDone ? "task-complete" : "") @(ContainsArabic(sub.Title) ? "arabic-text" : "")">@sub.Title</span>
+                        <button class="btn btn-link icon-button" title="Edit" aria-label="Edit" @onclick="() => StartEdit(sub)"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-link text-danger icon-button" title="Delete" aria-label="Delete" @onclick="() => DeleteTask(sub)"><i class="bi bi-trash"></i></button>
+                    }
+                </div>
+            }
+
+            @if (addingSubtaskFor == t.Id)
+            {
+                <div class="add-subtask-row">
+                    <input class="form-control form-control-sm" dir="auto" placeholder="Add a subtask" @bind="newSubtaskText" @bind:event="oninput"
+                           @onkeydown="@(async e => { if (e.Key == "Enter") await AddSubtask(t); })" />
+                    <button class="btn btn-outline-primary icon-button" title="Add subtask" aria-label="Add subtask" @onclick="() => AddSubtask(t)"><i class="bi bi-plus-lg"></i></button>
+                </div>
+            }
         }
 
         <div class="add-task-row">
@@ -72,6 +101,8 @@
     private int? editingId;
     private string editText = "";
     private string newTaskText = "";
+    private int? addingSubtaskFor;
+    private string newSubtaskText = "";
 
     private static bool ContainsArabic(string text) => text.Any(character =>
         (character >= '؀' && character <= 'ۿ') ||
@@ -90,7 +121,11 @@
     private async Task ToggleTask(TaskItem t)
     {
         t.IsDone = !t.IsDone;
-        if (project is not null) await ProjectStore.SaveProjectAsync(project);
+        if (project is not null)
+        {
+            project.IsArchived = project.TotalCount > 0 && project.DoneCount == project.TotalCount;
+            await ProjectStore.SaveProjectAsync(project);
+        }
     }
 
     private void StartEdit(TaskItem t)
@@ -113,7 +148,7 @@
 
     private async Task DeleteTask(TaskItem t)
     {
-        project?.Tasks.Remove(t);
+        project?.Tasks.RemoveAll(x => x.Id == t.Id || x.ParentTaskId == t.Id);
         if (project is not null) await ProjectStore.SaveProjectAsync(project);
     }
 
@@ -124,9 +159,29 @@
         {
             ProjectId = project.Id,
             Title = newTaskText,
-            SortOrder = project.Tasks.Count
+            SortOrder = project.Tasks.Count(x => x.ParentTaskId is null)
         });
         await ProjectStore.SaveProjectAsync(project);
         newTaskText = "";
+    }
+
+    private void ToggleAddSubtask(TaskItem parent)
+    {
+        addingSubtaskFor = addingSubtaskFor == parent.Id ? null : parent.Id;
+        newSubtaskText = "";
+    }
+
+    private async Task AddSubtask(TaskItem parent)
+    {
+        if (string.IsNullOrWhiteSpace(newSubtaskText) || project is null) return;
+        project.Tasks.Add(new TaskItem
+        {
+            ProjectId = project.Id,
+            ParentTaskId = parent.Id,
+            Title = newSubtaskText,
+            SortOrder = project.Tasks.Count(c => c.ParentTaskId == parent.Id)
+        });
+        await ProjectStore.SaveProjectAsync(project);
+        newSubtaskText = "";
     }
 }
