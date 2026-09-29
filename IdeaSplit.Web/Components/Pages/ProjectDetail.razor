@@ -17,7 +17,20 @@
     else
     {
         <button class="btn btn-link icon-button back-button" title="Back" aria-label="Back" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left"></i></button>
-        <h1>@project.Title</h1>
+        @if (isEditingTitle)
+        {
+            <div class="project-title-row mb-3">
+                <input class="form-control" dir="auto" @bind="editTitleText" @bind:event="oninput" @onkeydown="OnTitleEditKeyDown" />
+                <button class="btn btn-outline-primary icon-button" title="Save" aria-label="Save" @onclick="SaveTitleEdit"><i class="bi bi-check-lg"></i></button>
+            </div>
+        }
+        else
+        {
+            <div class="project-title-row">
+                <h1 class="mb-0">@project.Title</h1>
+                <button class="btn btn-link icon-button" title="Edit project name" aria-label="Edit project name" @onclick="StartEditTitle"><i class="bi bi-pencil"></i></button>
+            </div>
+        }
         <p class="text-muted">
             @project.DoneCount of @project.TotalCount tasks done
             @if (project.ScheduleDate is not null)
@@ -100,6 +113,8 @@
     private Project? project;
     private int? editingId;
     private string editText = "";
+    private bool isEditingTitle;
+    private string editTitleText = "";
     private string newTaskText = "";
     private int? addingSubtaskFor;
     private string newSubtaskText = "";
@@ -144,6 +159,29 @@
     private async Task OnEditKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e, TaskItem t)
     {
         if (e.Key == "Enter") await SaveEdit(t);
+    }
+
+    private void StartEditTitle()
+    {
+        editTitleText = project?.Title ?? "";
+        isEditingTitle = true;
+    }
+
+    private async Task SaveTitleEdit()
+    {
+        if (project is null || string.IsNullOrWhiteSpace(editTitleText))
+        {
+            isEditingTitle = false;
+            return;
+        }
+        project.Title = editTitleText.Trim();
+        await ProjectStore.SaveProjectAsync(project);
+        isEditingTitle = false;
+    }
+
+    private async Task OnTitleEditKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SaveTitleEdit();
     }
 
     private async Task DeleteTask(TaskItem t)
