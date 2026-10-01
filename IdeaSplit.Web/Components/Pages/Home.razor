@@ -4,11 +4,11 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
-<PageTitle>IdeaSplit</PageTitle>
+<PageTitle>NxtTask</PageTitle>
 
 <div class="page-container has-composer">
     <div class="page-header">
-        <div><h1>Your projects</h1>@if (projects is { Count: > 0 }) {<p class="page-subtitle">@projects.Count open @(projects.Count == 1 ? "project" : "projects")</p>}</div>
+        <div><h1>NxtTask</h1>@if (projects is { Count: > 0 }) {<p class="page-subtitle">@projects.Count open @(projects.Count == 1 ? "project" : "projects")</p>}</div>
         <div class="header-actions">
             <button class="btn btn-outline-secondary icon-button" title="Archive" aria-label="Archive" @onclick='() => Nav.NavigateTo("/archive")'><i class="bi bi-archive"></i></button>
             <button class="btn btn-outline-secondary icon-button" title="Settings" aria-label="Settings" @onclick='() => Nav.NavigateTo("/settings")'><i class="bi bi-gear"></i></button>
