@@ -44,13 +44,11 @@
             <div class="progress-bar" style="width:@(project.ProgressPercent)%"></div>
         </div>
 
-        @{
-            var topLevel = project.Tasks.Where(x => x.ParentTaskId is null).ToList();
-            var open = topLevel.Where(x => !x.IsDone).OrderBy(x => x.SortOrder).ToList();
-            var done = topLevel.Where(x => x.IsDone).OrderBy(x => x.SortOrder).ToList();
-            var firstDone = done.FirstOrDefault();
-            var visible = showCompleted ? open.Concat(done).ToList() : open;
-        }
+        var topLevel = project.Tasks.Where(x => x.ParentTaskId is null).ToList();
+        var open = topLevel.Where(x => !x.IsDone).OrderBy(x => x.SortOrder).ToList();
+        var done = topLevel.Where(x => x.IsDone).OrderBy(x => x.SortOrder).ToList();
+        var firstDone = done.FirstOrDefault();
+        var visible = showCompleted ? open.Concat(done).ToList() : open;
 
         @if (open.Count == 0 && done.Count > 0)
         {
