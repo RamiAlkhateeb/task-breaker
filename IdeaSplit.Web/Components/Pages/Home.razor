@@ -15,6 +15,19 @@
         </div>
     </div>
 
+    @if (projects is { Count: > 0 })
+    {
+        <div class="search-box">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="search" class="search-input" dir="auto" placeholder="Search days and tasks" aria-label="Search days and tasks"
+                   @bind="query" @bind:event="oninput" />
+            @if (query.Length > 0)
+            {
+                <button type="button" class="search-clear" title="Clear search" aria-label="Clear search" @onclick='() => query = ""'><i class="bi bi-x-lg"></i></button>
+            }
+        </div>
+    }
+
     @if (projects is null)
     {
         <div class="loading-stack" aria-label="Loading projects" role="status">
@@ -38,9 +51,13 @@
             <p>Describe a plan in the box below and it gets split into a checklist for you.</p>
         </div>
     }
+    else if (Filtered.Count == 0)
+    {
+        <p class="no-results">No matches for “@query.Trim()”.</p>
+    }
     else
     {
-        @foreach (var p in projects)
+        @foreach (var p in Filtered)
         {
             <div class="card project-card" style="@CardAccent(p)" @onclick='() => Nav.NavigateTo($"/project/{p.Id}")'>
                 <div class="card-body">
@@ -52,6 +69,19 @@
                     <div class="progress task-progress">
                         <div class="progress-bar" style="width:@(p.ProgressPercent)%"></div>
                     </div>
+                    @if (HasQuery)
+                    {
+                        var hits = TaskHits(p);
+                        @if (hits.Count > 0)
+                        {
+                            <ul class="search-hits">
+                                @foreach (var hit in hits)
+                                {
+                                    <li>@hit.Title@if (!string.IsNullOrWhiteSpace(hit.ProjectName)) {<span class="search-hit-project">@hit.ProjectName</span>}</li>
+                                }
+                            </ul>
+                        }
+                    }
                     <div class="project-card-footer">
                         <div class="project-card-actions">
                             <button class="btn btn-link icon-button card-action" title="@(p.IsPinned ? "Unpin project" : "Pin project")" aria-label="@(p.IsPinned ? "Unpin project" : "Pin project")" @onclick="() => TogglePin(p.Id)" @onclick:stopPropagation="true"><i class="bi @(p.IsPinned ? "bi-pin-angle-fill" : "bi-pin-angle")"></i></button>
@@ -68,6 +98,20 @@
 
 @code {
     private List<IdeaSplit.Shared.Models.Project>? projects;
+    private string query = "";
+
+    private bool HasQuery => !string.IsNullOrWhiteSpace(query);
+
+    private List<IdeaSplit.Shared.Models.Project> Filtered =>
+        projects is null || !HasQuery
+            ? projects ?? []
+            : projects.Where(project => Matches(project.Title) || TaskHits(project).Count > 0).ToList();
+
+    private bool Matches(string? value) =>
+        value is not null && value.Contains(query.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private List<IdeaSplit.Shared.Models.TaskItem> TaskHits(IdeaSplit.Shared.Models.Project project) =>
+        project.Tasks.Where(task => Matches(task.Title) || Matches(task.ProjectName)).Take(3).ToList();
 
     protected override async Task OnInitializedAsync()
     {

@@ -205,20 +205,19 @@
         var idea = text.Trim();
         try
         {
-            var titleTask = GenerateTitleSafeAsync(idea);
-            var created = 0;
+            var touched = 0;
 
             if (planType == TaskScheduleType.DayWeek)
             {
-                var breakdownTask = Gemini.BreakDownIdeaAsync(idea);
-                await Task.WhenAll(breakdownTask, titleTask);
-                await SaveDayProjectAsync(idea, titleTask.Result, planDate!.Value.Date, breakdownTask.Result.Tasks);
-                created = 1;
+                var breakdown = await Gemini.BreakDownIdeaAsync(idea);
+                await AddTasksToDayAsync(planDate!.Value.Date, breakdown.Tasks, null);
+                touched = 1;
             }
             else
             {
                 var start = DateTime.Today;
                 var dayCount = (planDate!.Value.Date - start).Days + 1;
+                var titleTask = GenerateTitleSafeAsync(idea);
                 var planTask = Gemini.PlanDaysAsync(idea, dayCount);
                 await Task.WhenAll(planTask, titleTask);
 
@@ -226,14 +225,14 @@
                 for (var index = 0; index < Math.Min(dayCount, plan.Count); index++)
                 {
                     if (plan[index].Count == 0) continue;
-                    await SaveDayProjectAsync(idea, titleTask.Result, start.AddDays(index), plan[index]);
-                    created++;
+                    await AddTasksToDayAsync(start.AddDays(index), plan[index], titleTask.Result);
+                    touched++;
                 }
             }
 
             showSheet = false;
             text = "";
-            status = created == 1 ? "Created 1 day project." : $"Created {created} day projects.";
+            status = touched == 1 ? "Added tasks to 1 day." : $"Added tasks to {touched} days.";
             await OnCreated.InvokeAsync();
         }
         catch (Exception ex)
@@ -246,15 +245,17 @@
         }
     }
 
-    private Task SaveDayProjectAsync(string idea, string title, DateTime date, List<string> tasks) =>
-        ProjectStore.SaveProjectAsync(new Project
+    private async Task AddTasksToDayAsync(DateTime date, List<string> tasks, string? projectName)
+    {
+        var day = await ProjectStore.GetOrCreateDayProjectAsync(date);
+        var next = day.Tasks.Count(task => task.ParentTaskId is null);
+        foreach (var title in tasks)
         {
-            Title = $"{title} — {date:MMM d}",
-            OriginalIdea = idea,
-            ScheduleType = TaskScheduleType.DayWeek,
-            ScheduleDate = date,
-            Tasks = tasks.Select((task, index) => new TaskItem { Title = task, SortOrder = index }).ToList()
-        });
+            day.Tasks.Add(new TaskItem { Title = title, ProjectName = projectName, SortOrder = next++ });
+        }
+        day.IsArchived = false;
+        await ProjectStore.SaveProjectAsync(day);
+    }
 
     private async Task<string> GenerateTitleSafeAsync(string idea)
     {

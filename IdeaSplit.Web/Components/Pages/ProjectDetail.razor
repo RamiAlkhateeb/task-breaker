@@ -73,7 +73,13 @@
                     }
                     else
                     {
-                        <span class="task-title @(t.IsDone ? "task-complete" : "") @(ContainsArabic(t.Title) ? "arabic-text" : "")">@t.Title</span>
+                        <div class="task-main">
+                            <span class="task-title @(t.IsDone ? "task-complete" : "") @(ContainsArabic(t.Title) ? "arabic-text" : "")">@t.Title</span>
+                            @if (!string.IsNullOrWhiteSpace(t.ProjectName))
+                            {
+                                <span class="task-project">@t.ProjectName</span>
+                            }
+                        </div>
                         <div class="task-actions">
                             <button class="btn btn-link icon-button" title="Add subtask" aria-label="Add subtask" @onclick="() => ToggleAddSubtask(t)"><i class="bi bi-plus-lg"></i></button>
                             @if (project.ScheduleType == TaskScheduleType.DayWeek && !t.IsDone)

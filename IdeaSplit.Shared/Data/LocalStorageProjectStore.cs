@@ -63,8 +63,11 @@ public class LocalStorageProjectStore : IProjectStore
     public async Task<Project> GetOrCreateDayProjectAsync(DateTime date)
     {
         var projects = await GetProjectsAsync();
-        var existing = projects.FirstOrDefault(project =>
-            project.ScheduleType == TaskScheduleType.DayWeek && project.ScheduleDate?.Date == date.Date);
+        var existing = projects
+            .Where(project => project.ScheduleType == TaskScheduleType.DayWeek && project.ScheduleDate?.Date == date.Date)
+            .OrderBy(project => project.IsArchived)
+            .ThenBy(project => project.CreatedAt)
+            .FirstOrDefault();
         if (existing is not null)
         {
             if (existing.IsArchived)
@@ -77,7 +80,7 @@ public class LocalStorageProjectStore : IProjectStore
 
         var created = new Project
         {
-            Title = $"Tasks — {date:MMM d}",
+            Title = date.ToString("dddd, MMM d"),
             ScheduleType = TaskScheduleType.DayWeek,
             ScheduleDate = date.Date
         };
