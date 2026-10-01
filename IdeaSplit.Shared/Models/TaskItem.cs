@@ -6,6 +6,7 @@ public class TaskItem
     public int ProjectId { get; set; }
     public int? ParentTaskId { get; set; }
     public string Title { get; set; } = "";
+    public string? ProjectName { get; set; }
     public bool IsDone { get; set; }
     public int SortOrder { get; set; }
 }
