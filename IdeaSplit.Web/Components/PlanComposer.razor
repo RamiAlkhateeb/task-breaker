@@ -1,0 +1,277 @@
+@using IdeaSplit.Shared.Data
+@using IdeaSplit.Shared.Models
+@using IdeaSplit.Shared.Services
+@implements IAsyncDisposable
+@inject IProjectStore ProjectStore
+@inject GeminiService Gemini
+@inject SettingsService Settings
+@inject IJSRuntime JS
+
+@if (!string.IsNullOrEmpty(status))
+{
+    <div class="composer-status" role="status">@status</div>
+}
+
+<div class="composer">
+    <textarea class="composer-input" dir="auto" rows="@Rows" @bind="text" @bind:event="oninput"
+              placeholder="@(listening ? "Listening..." : "Describe your plan...")"
+              aria-label="Describe your plan"></textarea>
+    @if (speechSupported)
+    {
+        <button type="button" class="composer-icon-btn @(listening ? "is-listening" : "")" title="@(listening ? "Stop recording" : "Dictate")"
+                aria-label="@(listening ? "Stop recording" : "Dictate")" @onclick="ToggleMic">
+            <i class="bi @(listening ? "bi-stop-fill" : "bi-mic")"></i>
+        </button>
+    }
+    <button type="button" class="composer-send-btn" title="Submit" aria-label="Submit"
+            disabled="@(string.IsNullOrWhiteSpace(text))" @onclick="Submit">
+        <i class="bi bi-arrow-up"></i>
+    </button>
+</div>
+
+@if (showSheet)
+{
+    <div class="composer-backdrop" @onclick="CloseSheet">
+        <div class="composer-sheet" role="dialog" aria-label="When is this plan for?" @onclick:stopPropagation="true">
+            <h2>When is this plan for?</h2>
+
+            <div class="schedule-type-toggle" role="radiogroup" aria-label="Plan length">
+                <button type="button" class="schedule-type-btn @(planType == TaskScheduleType.DayWeek ? "active" : "")"
+                        aria-pressed="@(planType == TaskScheduleType.DayWeek)" @onclick="() => SetPlanType(TaskScheduleType.DayWeek)">
+                    <i class="bi bi-calendar3" aria-hidden="true"></i> One day
+                </button>
+                <button type="button" class="schedule-type-btn @(planType == TaskScheduleType.ProjectDeadline ? "active" : "")"
+                        aria-pressed="@(planType == TaskScheduleType.ProjectDeadline)" @onclick="() => SetPlanType(TaskScheduleType.ProjectDeadline)">
+                    <i class="bi bi-flag" aria-hidden="true"></i> Multiple days
+                </button>
+            </div>
+
+            <label class="form-label mt-3" for="plan-date">@(planType == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")</label>
+            <div class="quick-dates">
+                @if (planType == TaskScheduleType.DayWeek)
+                {
+                    <button type="button" class="quick-date-chip @(IsQuick(0) ? "active" : "")" @onclick="() => planDate = DateTime.Today">Today</button>
+                    <button type="button" class="quick-date-chip @(IsQuick(1) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(1)">Tomorrow</button>
+                }
+                else
+                {
+                    <button type="button" class="quick-date-chip @(IsQuick(3) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(3)">In 3 days</button>
+                    <button type="button" class="quick-date-chip @(IsQuick(7) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(7)">In a week</button>
+                    <button type="button" class="quick-date-chip @(IsQuick(14) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(14)">In 2 weeks</button>
+                }
+            </div>
+            <input id="plan-date" type="date" class="form-control" @bind="planDate"
+                   min="@MinDate.ToString("yyyy-MM-dd")" max="@MaxDateAttribute" />
+
+            @if (planType == TaskScheduleType.ProjectDeadline)
+            {
+                <p class="form-hint">One project per day from today to the deadline (up to @MaxDeadlineDays days), with your tasks spread across them.</p>
+            }
+
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <div class="alert alert-danger mt-3">@error</div>
+            }
+
+            <div class="composer-sheet-actions">
+                <button type="button" class="btn btn-outline-secondary" disabled="@isWorking" @onclick="CloseSheet">Cancel</button>
+                <button type="button" class="btn btn-primary" disabled="@isWorking" @onclick="Create">
+                    @if (isWorking)
+                    {
+                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Planning...</span>
+                    }
+                    else
+                    {
+                        <span>Create</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private const int MaxDeadlineDays = 30;
+
+    [Parameter] public EventCallback OnCreated { get; set; }
+
+    private DotNetObjectReference<PlanComposer>? selfRef;
+    private string text = "";
+    private string baseText = "";
+    private string? status;
+    private string? error;
+    private bool speechSupported;
+    private bool listening;
+    private bool showSheet;
+    private bool isWorking;
+    private TaskScheduleType planType = TaskScheduleType.DayWeek;
+    private DateTime? planDate = DateTime.Today;
+
+    private int Rows => Math.Clamp(text.Split('\n').Length, 1, 5);
+    private DateTime MinDate => planType == TaskScheduleType.ProjectDeadline ? DateTime.Today.AddDays(1) : DateTime.Today;
+    private string? MaxDateAttribute => planType == TaskScheduleType.ProjectDeadline
+        ? DateTime.Today.AddDays(MaxDeadlineDays).ToString("yyyy-MM-dd")
+        : null;
+
+    private bool IsQuick(int days) => planDate?.Date == DateTime.Today.AddDays(days);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        selfRef = DotNetObjectReference.Create(this);
+        speechSupported = await JS.InvokeAsync<bool>("ideaSplitSpeech.isSupported");
+        if (speechSupported) StateHasChanged();
+    }
+
+    private async Task ToggleMic()
+    {
+        status = null;
+        if (listening)
+        {
+            await JS.InvokeVoidAsync("ideaSplitSpeech.stop");
+            return;
+        }
+
+        baseText = text;
+        var language = await Settings.GetSpeechLanguageAsync();
+        listening = await JS.InvokeAsync<bool>("ideaSplitSpeech.start", selfRef, language);
+        if (!listening) status = "Could not start the microphone.";
+    }
+
+    [JSInvokable]
+    public Task OnSpeechResult(string transcript)
+    {
+        text = string.IsNullOrWhiteSpace(baseText) ? transcript.Trim() : $"{baseText.TrimEnd()} {transcript.Trim()}";
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnSpeechError(string reason)
+    {
+        if (reason is "not-allowed" or "service-not-allowed")
+            status = "Microphone permission was denied.";
+        else if (reason is not ("no-speech" or "aborted"))
+            status = $"Dictation error: {reason}.";
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnSpeechEnded()
+    {
+        listening = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        if (listening) await JS.InvokeVoidAsync("ideaSplitSpeech.stop");
+        status = null;
+        error = null;
+        planType = TaskScheduleType.DayWeek;
+        planDate = DateTime.Today;
+        showSheet = true;
+    }
+
+    private void CloseSheet()
+    {
+        if (!isWorking) showSheet = false;
+    }
+
+    private void SetPlanType(TaskScheduleType type)
+    {
+        planType = type;
+        planDate = type == TaskScheduleType.ProjectDeadline ? DateTime.Today.AddDays(7) : DateTime.Today;
+        error = null;
+    }
+
+    private string? Validate()
+    {
+        if (planDate is null) return "Pick a date.";
+        var date = planDate.Value.Date;
+        if (planType == TaskScheduleType.DayWeek)
+            return date < DateTime.Today ? "Pick today or a future date." : null;
+
+        var days = (date - DateTime.Today).Days;
+        return days is >= 1 and <= MaxDeadlineDays ? null : $"Pick a deadline between tomorrow and {MaxDeadlineDays} days from now.";
+    }
+
+    private async Task Create()
+    {
+        error = Validate();
+        if (error is not null) return;
+
+        isWorking = true;
+        var idea = text.Trim();
+        try
+        {
+            var titleTask = GenerateTitleSafeAsync(idea);
+            var created = 0;
+
+            if (planType == TaskScheduleType.DayWeek)
+            {
+                var breakdownTask = Gemini.BreakDownIdeaAsync(idea);
+                await Task.WhenAll(breakdownTask, titleTask);
+                await SaveDayProjectAsync(idea, titleTask.Result, planDate!.Value.Date, breakdownTask.Result.Tasks);
+                created = 1;
+            }
+            else
+            {
+                var start = DateTime.Today;
+                var dayCount = (planDate!.Value.Date - start).Days + 1;
+                var planTask = Gemini.PlanDaysAsync(idea, dayCount);
+                await Task.WhenAll(planTask, titleTask);
+
+                var plan = planTask.Result;
+                for (var index = 0; index < Math.Min(dayCount, plan.Count); index++)
+                {
+                    if (plan[index].Count == 0) continue;
+                    await SaveDayProjectAsync(idea, titleTask.Result, start.AddDays(index), plan[index]);
+                    created++;
+                }
+            }
+
+            showSheet = false;
+            text = "";
+            status = created == 1 ? "Created 1 day project." : $"Created {created} day projects.";
+            await OnCreated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isWorking = false;
+        }
+    }
+
+    private Task SaveDayProjectAsync(string idea, string title, DateTime date, List<string> tasks) =>
+        ProjectStore.SaveProjectAsync(new Project
+        {
+            Title = $"{title} — {date:MMM d}",
+            OriginalIdea = idea,
+            ScheduleType = TaskScheduleType.DayWeek,
+            ScheduleDate = date,
+            Tasks = tasks.Select((task, index) => new TaskItem { Title = task, SortOrder = index }).ToList()
+        });
+
+    private async Task<string> GenerateTitleSafeAsync(string idea)
+    {
+        try
+        {
+            return await Gemini.GenerateTitleAsync(idea);
+        }
+        catch (Exception)
+        {
+            return idea.Length > 40 ? idea[..40] + "..." : idea;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("ideaSplitSpeech.stop"); }
+        catch (Exception) { /* page is going away */ }
+        selfRef?.Dispose();
+    }
+}
