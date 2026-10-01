@@ -10,4 +10,5 @@ public interface IProjectStore
     Task DeleteProjectAsync(int projectId);
     Task TogglePinAsync(int projectId);
     Task SetArchivedAsync(int projectId, bool archived);
+    Task<Project> GetOrCreateDayProjectAsync(DateTime date);
 }

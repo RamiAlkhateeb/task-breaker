@@ -52,7 +52,7 @@
 
         @foreach (var t in project.Tasks.Where(t => t.ParentTaskId is null).OrderBy(t => t.IsDone).ThenBy(t => t.SortOrder))
         {
-            <div class="task-row">
+            <div class="task-row" @key="t.Id">
                 <input type="checkbox" checked="@t.IsDone" @onchange="() => ToggleTask(t)" />
                 @if (editingId == t.Id)
                 {
@@ -64,6 +64,10 @@
                 {
                     <span class="task-title @(t.IsDone ? "task-complete" : "") @(ContainsArabic(t.Title) ? "arabic-text" : "")">@t.Title</span>
                     <button class="btn btn-link icon-button" title="Add subtask" aria-label="Add subtask" @onclick="() => ToggleAddSubtask(t)"><i class="bi bi-plus-lg"></i></button>
+                    @if (project.ScheduleType == TaskScheduleType.DayWeek && !t.IsDone)
+                    {
+                        <button class="btn btn-link icon-button" title="Move to next day" aria-label="Move to next day" @onclick="() => MoveToNextDay(t)"><i class="bi bi-arrow-right-circle"></i></button>
+                    }
                     <button class="btn btn-link icon-button" title="Edit" aria-label="Edit" @onclick="() => StartEdit(t)"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-link text-danger icon-button" title="Delete" aria-label="Delete" @onclick="() => DeleteTask(t)"><i class="bi bi-trash"></i></button>
                 }
@@ -71,7 +75,7 @@
 
             @foreach (var sub in project.Tasks.Where(c => c.ParentTaskId == t.Id).OrderBy(c => c.IsDone).ThenBy(c => c.SortOrder))
             {
-                <div class="task-row subtask-row">
+                <div class="task-row subtask-row" @key="sub.Id">
                     <input type="checkbox" checked="@sub.IsDone" @onchange="() => ToggleTask(sub)" />
                     @if (editingId == sub.Id)
                     {
@@ -140,7 +144,25 @@
         {
             project.IsArchived = project.TotalCount > 0 && project.DoneCount == project.TotalCount;
             await ProjectStore.SaveProjectAsync(project);
+            await Load();
         }
+    }
+
+    private async Task MoveToNextDay(TaskItem t)
+    {
+        if (project is null) return;
+        var target = await ProjectStore.GetOrCreateDayProjectAsync((project.ScheduleDate ?? DateTime.Today).Date.AddDays(1));
+
+        var moving = project.Tasks.Where(x => x.Id == t.Id || x.ParentTaskId == t.Id).ToList();
+        project.Tasks.RemoveAll(x => x.Id == t.Id || x.ParentTaskId == t.Id);
+        t.SortOrder = target.Tasks.Count(x => x.ParentTaskId is null);
+        target.Tasks.AddRange(moving);
+        target.IsArchived = false;
+        await ProjectStore.SaveProjectAsync(target);
+
+        project.IsArchived = project.TotalCount > 0 && project.DoneCount == project.TotalCount;
+        await ProjectStore.SaveProjectAsync(project);
+        await Load();
     }
 
     private void StartEdit(TaskItem t)
