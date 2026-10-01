@@ -40,6 +40,31 @@ public class LocalStorageProjectStore : IProjectStore
         await _storage.SetItemAsync(ProjectsKey, projects);
     }
 
+    public async Task<Project> GetOrCreateDayProjectAsync(DateTime date)
+    {
+        var projects = await GetProjectsAsync();
+        var existing = projects.FirstOrDefault(project =>
+            project.ScheduleType == TaskScheduleType.DayWeek && project.ScheduleDate?.Date == date.Date);
+        if (existing is not null)
+        {
+            if (existing.IsArchived)
+            {
+                existing.IsArchived = false;
+                await _storage.SetItemAsync(ProjectsKey, projects);
+            }
+            return existing;
+        }
+
+        var created = new Project
+        {
+            Title = $"Tasks — {date:MMM d}",
+            ScheduleType = TaskScheduleType.DayWeek,
+            ScheduleDate = date.Date
+        };
+        await SaveProjectAsync(created);
+        return created;
+    }
+
     public async Task SaveProjectAsync(Project project)
     {
         var projects = await GetProjectsAsync();
@@ -54,7 +79,7 @@ public class LocalStorageProjectStore : IProjectStore
             if (index >= 0) projects[index] = project;
             else projects.Add(project);
         }
-        var nextTaskId = NextTaskId(projects.Where(existing => existing.Id != project.Id));
+        var nextTaskId = NextTaskId(projects);
         foreach (var task in project.Tasks)
         {
             task.ProjectId = project.Id;
