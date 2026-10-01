@@ -109,6 +109,33 @@ public class GeminiService
         throw new InvalidOperationException("None of the configured Gemini models could generate a title.", lastError);
     }
 
+    public async Task<List<List<string>>> PlanDaysAsync(string idea, int dayCount)
+    {
+        var apiKey = await _settings.GetGeminiApiKeyAsync();
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException("No Gemini API key set. Add one in Settings.");
+
+        var modelsToTry = await GetModelsToTryAsync();
+        Exception? lastError = null;
+
+        foreach (var model in modelsToTry)
+        {
+            try
+            {
+                return await PlanDaysCoreAsync(idea, model, apiKey, dayCount);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException)
+            {
+                lastError = ex;
+                _logger.LogWarning(ex, "Gemini model {Model} failed to plan days; trying the next fallback.", model);
+            }
+        }
+
+        throw new InvalidOperationException(
+            "None of the configured Gemini models could plan this. Check your API key, model access, and connection.",
+            lastError);
+    }
+
     private async Task<IEnumerable<string>> GetModelsToTryAsync()
     {
         var selectedModel = await _settings.GetGeminiModelAsync();
@@ -190,6 +217,65 @@ public class GeminiService
         return title;
     }
 
+    private async Task<List<List<string>>> PlanDaysCoreAsync(string idea, string model, string apiKey, int dayCount)
+    {
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(model)}:generateContent?key={Uri.EscapeDataString(apiKey)}";
+        var prompt = $"""
+            Plan the following idea across exactly {dayCount} consecutive days. Order the work so earlier
+            days lay the groundwork for later ones. Give 1 to 5 small, clear, actionable tasks per day;
+            a day may be empty only if truly needed. Return exactly {dayCount} days.
+
+            Idea: {idea}
+            """;
+        var body = new
+        {
+            contents = new[] { new { parts = new[] { new { text = prompt } } } },
+            generationConfig = new
+            {
+                response_mime_type = "application/json",
+                response_schema = new
+                {
+                    type = "OBJECT",
+                    properties = new
+                    {
+                        days = new
+                        {
+                            type = "ARRAY",
+                            items = new
+                            {
+                                type = "OBJECT",
+                                properties = new { tasks = new { type = "ARRAY", items = new { type = "STRING" } } },
+                                required = new[] { "tasks" }
+                            }
+                        }
+                    },
+                    required = new[] { "days" }
+                }
+            }
+        };
+
+        using var response = await _http.PostAsJsonAsync(url, body);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<GeminiResponse>();
+        var text = result?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text
+            ?? throw new InvalidOperationException("Gemini returned no content.");
+        var parsed = JsonSerializer.Deserialize<DayPlanResult>(text);
+        var days = parsed?.Days?.Select(day => day.Tasks.Where(task => !string.IsNullOrWhiteSpace(task)).ToList()).ToList() ?? [];
+        var allTasks = days.SelectMany(day => day).ToList();
+        if (allTasks.Count == 0)
+            throw new InvalidOperationException("Gemini returned an empty plan.");
+
+        return days.Count == dayCount ? days : SplitEvenly(allTasks, dayCount);
+    }
+
+    private static List<List<string>> SplitEvenly(List<string> tasks, int dayCount)
+    {
+        var perDay = (int)Math.Ceiling(tasks.Count / (double)dayCount);
+        return Enumerable.Range(0, dayCount)
+            .Select(index => tasks.Skip(index * perDay).Take(perDay).ToList())
+            .ToList();
+    }
+
     private sealed class ModelListResponse { [JsonPropertyName("models")] public List<GeminiModel>? Models { get; set; } }
     private sealed class GeminiModel
     {
@@ -197,6 +283,8 @@ public class GeminiService
         [JsonPropertyName("supportedGenerationMethods")] public List<string>? SupportedGenerationMethods { get; set; }
     }
     private sealed class TaskListResult { [JsonPropertyName("tasks")] public List<string> Tasks { get; set; } = []; }
+    private sealed class DayPlanResult { [JsonPropertyName("days")] public List<DayPlan>? Days { get; set; } }
+    private sealed class DayPlan { [JsonPropertyName("tasks")] public List<string> Tasks { get; set; } = []; }
     private sealed class TitleResult { [JsonPropertyName("title")] public string Title { get; set; } = ""; }
     private sealed class GeminiResponse { [JsonPropertyName("candidates")] public List<Candidate>? Candidates { get; set; } }
     private sealed class Candidate { [JsonPropertyName("content")] public Content? Content { get; set; } }

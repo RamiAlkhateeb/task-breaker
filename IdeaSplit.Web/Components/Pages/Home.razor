@@ -6,7 +6,7 @@
 
 <PageTitle>IdeaSplit</PageTitle>
 
-<div class="page-container">
+<div class="page-container has-composer">
     <div class="page-header">
         <div><h1>Your projects</h1>@if (projects is { Count: > 0 }) {<p class="page-subtitle">@projects.Count open @(projects.Count == 1 ? "project" : "projects")</p>}</div>
         <div class="header-actions">
@@ -35,7 +35,7 @@
                 <path d="m115 60 6 6 11-13m-17 31 6 6 11-13m16-19h22m-22 24h22m-22 24h16" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             <h2>No projects yet</h2>
-            <p>Describe an idea and it gets split into a checklist for you. Tap + to start.</p>
+            <p>Describe a plan in the box below and it gets split into a checklist for you.</p>
         </div>
     }
     else
@@ -64,7 +64,7 @@
     }
 </div>
 
-<button class="btn btn-primary floating-action-button" title="New project" aria-label="New project" @onclick='() => Nav.NavigateTo("/new")'><i class="bi bi-plus-lg"></i></button>
+<PlanComposer OnCreated="LoadProjects" />
 
 @code {
     private List<IdeaSplit.Shared.Models.Project>? projects;
@@ -78,6 +78,7 @@
         projects = (await ProjectStore.GetProjectsAsync())
             .Where(project => !project.IsArchived)
             .OrderByDescending(project => project.IsPinned)
+            .ThenBy(project => project.ScheduleDate ?? DateTime.MaxValue)
             .ThenByDescending(project => project.CreatedAt)
             .ToList();
 

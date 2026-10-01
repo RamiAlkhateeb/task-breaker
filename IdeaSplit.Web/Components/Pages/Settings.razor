@@ -15,6 +15,13 @@
         <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a>.
     </p>
 
+    <label class="form-label" for="speech-language">Dictation language</label>
+    <select id="speech-language" class="form-select" @bind="speechLanguage">
+        <option value="en-US">English</option>
+        <option value="ar-SA">العربية</option>
+    </select>
+    <p class="form-hint">Used by the microphone in the plan box.</p>
+
     <div class="model-heading">
         <label class="form-label mb-0" for="model">Model</label>
         <button class="btn btn-outline-secondary icon-button" title="Refresh models" aria-label="Refresh models" disabled="@isLoadingModels" @onclick="RefreshModels"><i class="bi bi-arrow-clockwise"></i></button>
@@ -61,6 +68,7 @@
 @code {
     private string apiKey = "";
     private string selectedModel = SettingsService.DefaultGeminiModel;
+    private string speechLanguage = SettingsService.DefaultSpeechLanguage;
     private List<string> availableModels = [];
     private bool isLoadingModels;
     private bool saved;
@@ -69,6 +77,7 @@
     {
         apiKey = await SettingsService.GetGeminiApiKeyAsync() ?? "";
         selectedModel = await SettingsService.GetGeminiModelAsync();
+        speechLanguage = await SettingsService.GetSpeechLanguageAsync();
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
             await RefreshModels();
@@ -86,6 +95,7 @@
     private async Task Save()
     {
         await SettingsService.SaveGeminiApiKeyAsync(apiKey);
+        await SettingsService.SaveSpeechLanguageAsync(speechLanguage);
         await PersistModelAsync();
         saved = true;
         if (!string.IsNullOrWhiteSpace(apiKey)) await RefreshModels();
