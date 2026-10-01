@@ -31,15 +31,9 @@
                 <button class="btn btn-link icon-button" title="Edit project name" aria-label="Edit project name" @onclick="StartEditTitle"><i class="bi bi-pencil"></i></button>
             </div>
         }
-        <p class="text-muted">
-            @project.DoneCount of @project.TotalCount tasks done
-            @if (project.ScheduleDate is not null)
-            {
-                <span class="task-due-badge" title="@(project.ScheduleType == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")">
-                    <i class="bi @(project.ScheduleType == TaskScheduleType.ProjectDeadline ? "bi-flag" : "bi-calendar3")" aria-hidden="true"></i>
-                    @project.ScheduleDate.Value.ToString("MMM d")
-                </span>
-            }
+        <p class="project-meta">
+            <DueChip Date="project.ScheduleDate" Type="project.ScheduleType" Muted="project.IsArchived" />
+            <span class="text-muted">@project.DoneCount of @project.TotalCount tasks done</span>
         </p>
         @if (!string.IsNullOrWhiteSpace(UsedModel))
         {
@@ -50,62 +44,95 @@
             <div class="progress-bar" style="width:@(project.ProgressPercent)%"></div>
         </div>
 
-        @foreach (var t in project.Tasks.Where(t => t.ParentTaskId is null).OrderBy(t => t.IsDone).ThenBy(t => t.SortOrder))
-        {
-            <div class="task-row" @key="t.Id">
-                <input type="checkbox" checked="@t.IsDone" @onchange="() => ToggleTask(t)" />
-                @if (editingId == t.Id)
-                {
-                    <input class="form-control form-control-sm" dir="auto" @bind="editText" @bind:event="oninput"
-                           @onkeydown="@(e => OnEditKeyDown(e, t))" />
-                    <button class="btn btn-outline-primary icon-button" title="Save" aria-label="Save" @onclick="() => SaveEdit(t)"><i class="bi bi-check-lg"></i></button>
-                }
-                else
-                {
-                    <span class="task-title @(t.IsDone ? "task-complete" : "") @(ContainsArabic(t.Title) ? "arabic-text" : "")">@t.Title</span>
-                    <button class="btn btn-link icon-button" title="Add subtask" aria-label="Add subtask" @onclick="() => ToggleAddSubtask(t)"><i class="bi bi-plus-lg"></i></button>
-                    @if (project.ScheduleType == TaskScheduleType.DayWeek && !t.IsDone)
-                    {
-                        <button class="btn btn-link icon-button" title="Move to next day" aria-label="Move to next day" @onclick="() => MoveToNextDay(t)"><i class="bi bi-arrow-right-circle"></i></button>
-                    }
-                    <button class="btn btn-link icon-button" title="Edit" aria-label="Edit" @onclick="() => StartEdit(t)"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-link text-danger icon-button" title="Delete" aria-label="Delete" @onclick="() => DeleteTask(t)"><i class="bi bi-trash"></i></button>
-                }
-            </div>
+        @{
+            var topLevel = project.Tasks.Where(x => x.ParentTaskId is null).ToList();
+            var open = topLevel.Where(x => !x.IsDone).OrderBy(x => x.SortOrder).ToList();
+            var done = topLevel.Where(x => x.IsDone).OrderBy(x => x.SortOrder).ToList();
+            var firstDone = done.FirstOrDefault();
+            var visible = showCompleted ? open.Concat(done).ToList() : open;
+        }
 
-            @foreach (var sub in project.Tasks.Where(c => c.ParentTaskId == t.Id).OrderBy(c => c.IsDone).ThenBy(c => c.SortOrder))
+        @if (open.Count == 0 && done.Count > 0)
+        {
+            <p class="all-done">All tasks done</p>
+        }
+
+        @foreach (var t in visible)
+        {
+            @if (showCompleted && ReferenceEquals(t, firstDone))
             {
-                <div class="task-row subtask-row" @key="sub.Id">
-                    <input type="checkbox" checked="@sub.IsDone" @onchange="() => ToggleTask(sub)" />
-                    @if (editingId == sub.Id)
+                <button type="button" class="completed-toggle" @onclick="() => showCompleted = false"><i class="bi bi-chevron-down" aria-hidden="true"></i> Completed (@done.Count)</button>
+            }
+
+            <div class="task-group" @key="t">
+                <div class="task-row">
+                    <input type="checkbox" checked="@t.IsDone" @onchange="() => ToggleTask(t)" aria-label="Mark done" />
+                    @if (editingId == t.Id)
                     {
                         <input class="form-control form-control-sm" dir="auto" @bind="editText" @bind:event="oninput"
-                               @onkeydown="@(e => OnEditKeyDown(e, sub))" />
-                        <button class="btn btn-outline-primary icon-button" title="Save" aria-label="Save" @onclick="() => SaveEdit(sub)"><i class="bi bi-check-lg"></i></button>
+                               @onkeydown="@(e => OnEditKeyDown(e, t))" />
+                        <button class="btn btn-outline-primary icon-button" title="Save" aria-label="Save" @onclick="() => SaveEdit(t)"><i class="bi bi-check-lg"></i></button>
                     }
                     else
                     {
-                        <span class="task-title @(sub.IsDone ? "task-complete" : "") @(ContainsArabic(sub.Title) ? "arabic-text" : "")">@sub.Title</span>
-                        <button class="btn btn-link icon-button" title="Edit" aria-label="Edit" @onclick="() => StartEdit(sub)"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-link text-danger icon-button" title="Delete" aria-label="Delete" @onclick="() => DeleteTask(sub)"><i class="bi bi-trash"></i></button>
+                        <span class="task-title @(t.IsDone ? "task-complete" : "") @(ContainsArabic(t.Title) ? "arabic-text" : "")">@t.Title</span>
+                        <div class="task-actions">
+                            <button class="btn btn-link icon-button" title="Add subtask" aria-label="Add subtask" @onclick="() => ToggleAddSubtask(t)"><i class="bi bi-plus-lg"></i></button>
+                            @if (project.ScheduleType == TaskScheduleType.DayWeek && !t.IsDone)
+                            {
+                                <button class="btn btn-link icon-button" title="Move to next day" aria-label="Move to next day" @onclick="() => MoveToNextDay(t)"><i class="bi bi-arrow-right-circle"></i></button>
+                            }
+                            <button class="btn btn-link icon-button" title="Edit" aria-label="Edit" @onclick="() => StartEdit(t)"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-link text-danger icon-button" title="Delete" aria-label="Delete" @onclick="() => DeleteTask(t)"><i class="bi bi-trash"></i></button>
+                        </div>
                     }
                 </div>
-            }
 
-            @if (addingSubtaskFor == t.Id)
-            {
-                <div class="add-subtask-row">
-                    <input class="form-control form-control-sm" dir="auto" placeholder="Add a subtask" @bind="newSubtaskText" @bind:event="oninput"
-                           @onkeydown="@(async e => { if (e.Key == "Enter") await AddSubtask(t); })" />
-                    <button class="btn btn-outline-primary icon-button" title="Add subtask" aria-label="Add subtask" @onclick="() => AddSubtask(t)"><i class="bi bi-plus-lg"></i></button>
-                </div>
-            }
+                @foreach (var sub in project.Tasks.Where(c => c.ParentTaskId == t.Id).OrderBy(c => c.IsDone).ThenBy(c => c.SortOrder))
+                {
+                    <div class="task-row subtask-row" @key="sub">
+                        <input type="checkbox" checked="@sub.IsDone" @onchange="() => ToggleTask(sub)" aria-label="Mark done" />
+                        @if (editingId == sub.Id)
+                        {
+                            <input class="form-control form-control-sm" dir="auto" @bind="editText" @bind:event="oninput"
+                                   @onkeydown="@(e => OnEditKeyDown(e, sub))" />
+                            <button class="btn btn-outline-primary icon-button" title="Save" aria-label="Save" @onclick="() => SaveEdit(sub)"><i class="bi bi-check-lg"></i></button>
+                        }
+                        else
+                        {
+                            <span class="task-title @(sub.IsDone ? "task-complete" : "") @(ContainsArabic(sub.Title) ? "arabic-text" : "")">@sub.Title</span>
+                            <div class="task-actions">
+                                <button class="btn btn-link icon-button" title="Edit" aria-label="Edit" @onclick="() => StartEdit(sub)"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-link text-danger icon-button" title="Delete" aria-label="Delete" @onclick="() => DeleteTask(sub)"><i class="bi bi-trash"></i></button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (addingSubtaskFor == t.Id)
+                {
+                    <div class="add-subtask-row">
+                        <input class="form-control form-control-sm" dir="auto" placeholder="Add a subtask" @bind="newSubtaskText" @bind:event="oninput"
+                               @onkeydown="@(async e => { if (e.Key == "Enter") await AddSubtask(t); })" />
+                        <button class="btn btn-outline-primary icon-button" title="Add subtask" aria-label="Add subtask" @onclick="() => AddSubtask(t)"><i class="bi bi-plus-lg"></i></button>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (!showCompleted && done.Count > 0)
+        {
+            <button type="button" class="completed-toggle" @onclick="() => showCompleted = true"><i class="bi bi-chevron-right" aria-hidden="true"></i> Completed (@done.Count)</button>
         }
 
         <div class="add-task-row">
-            <input class="form-control" dir="auto" placeholder="Add a task" @bind="newTaskText" @bind:event="oninput"
+            <i class="bi bi-plus-lg add-task-glyph" aria-hidden="true"></i>
+            <input class="add-task-input" dir="auto" placeholder="Add a task" @bind="newTaskText" @bind:event="oninput"
                    @onkeydown="@(async e => { if (e.Key == "Enter") await AddTask(); })" />
-            <button class="btn btn-outline-primary icon-button" title="Add" aria-label="Add" @onclick="AddTask"><i class="bi bi-plus-lg"></i></button>
+            @if (!string.IsNullOrWhiteSpace(newTaskText))
+            {
+                <button class="btn btn-primary icon-button" title="Add" aria-label="Add" @onclick="AddTask"><i class="bi bi-arrow-up"></i></button>
+            }
         </div>
     }
 </div>
@@ -119,6 +146,7 @@
     private string editText = "";
     private bool isEditingTitle;
     private string editTitleText = "";
+    private bool showCompleted;
     private string newTaskText = "";
     private int? addingSubtaskFor;
     private string newSubtaskText = "";
