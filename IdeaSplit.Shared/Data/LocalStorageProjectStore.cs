@@ -9,8 +9,28 @@ public class LocalStorageProjectStore : IProjectStore
     private readonly ILocalStorageService _storage;
     public LocalStorageProjectStore(ILocalStorageService storage) => _storage = storage;
 
-    public async Task<List<Project>> GetProjectsAsync() =>
-        (await _storage.GetItemAsync<List<Project>>(ProjectsKey) ?? []).OrderByDescending(project => project.CreatedAt).ToList();
+    public async Task<List<Project>> GetProjectsAsync()
+    {
+        var projects = await _storage.GetItemAsync<List<Project>>(ProjectsKey) ?? [];
+        if (NormalizeTaskIds(projects)) await _storage.SetItemAsync(ProjectsKey, projects);
+        return projects.OrderByDescending(project => project.CreatedAt).ToList();
+    }
+
+    private static bool NormalizeTaskIds(List<Project> projects)
+    {
+        var tasks = projects.SelectMany(project => project.Tasks).ToList();
+        var seen = new HashSet<int>();
+        var next = tasks.Select(task => task.Id).DefaultIfEmpty().Max() + 1;
+        var changed = false;
+        foreach (var task in tasks)
+        {
+            if (task.Id != 0 && seen.Add(task.Id)) continue;
+            task.Id = next++;
+            seen.Add(task.Id);
+            changed = true;
+        }
+        return changed;
+    }
     public async Task<Project?> GetProjectAsync(int projectId) => (await GetProjectsAsync()).FirstOrDefault(project => project.Id == projectId);
 
     public async Task DeleteProjectAsync(int projectId)

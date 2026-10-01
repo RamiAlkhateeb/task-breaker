@@ -8,7 +8,7 @@
 
 <div class="page-container">
     <div class="page-header">
-        <h1>Your projects</h1>
+        <div><h1>Your projects</h1>@if (projects is { Count: > 0 }) {<p class="page-subtitle">@projects.Count open @(projects.Count == 1 ? "project" : "projects")</p>}</div>
         <div class="header-actions">
             <button class="btn btn-outline-secondary icon-button" title="Archive" aria-label="Archive" @onclick='() => Nav.NavigateTo("/archive")'><i class="bi bi-archive"></i></button>
             <button class="btn btn-outline-secondary icon-button" title="Settings" aria-label="Settings" @onclick='() => Nav.NavigateTo("/settings")'><i class="bi bi-gear"></i></button>
@@ -35,7 +35,7 @@
                 <path d="m115 60 6 6 11-13m-17 31 6 6 11-13m16-19h22m-22 24h22m-22 24h16" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             <h2>No projects yet</h2>
-            <p>Tap + to turn an idea into one.</p>
+            <p>Describe an idea and it gets split into a checklist for you. Tap + to start.</p>
         </div>
     }
     else
@@ -44,24 +44,19 @@
         {
             <div class="card project-card" style="@CardAccent(p)" @onclick='() => Nav.NavigateTo($"/project/{p.Id}")'>
                 <div class="card-body">
-                    <h5 class="card-title mb-1">@p.Title</h5>
+                    <h5 class="card-title">@p.Title</h5>
+                    <p class="project-meta">
+                        <DueChip Date="p.ScheduleDate" Type="p.ScheduleType" />
+                        <span class="text-muted">@p.DoneCount/@p.TotalCount tasks</span>
+                    </p>
+                    <div class="progress task-progress">
+                        <div class="progress-bar" style="width:@(p.ProgressPercent)%"></div>
+                    </div>
                     <div class="project-card-footer">
                         <div class="project-card-actions">
-                            @if (p.ScheduleDate is not null)
-                            {
-                                <span class="task-due-badge" title="@(p.ScheduleType == IdeaSplit.Shared.Models.TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")">
-                                    <i class="bi @(p.ScheduleType == IdeaSplit.Shared.Models.TaskScheduleType.ProjectDeadline ? "bi-flag" : "bi-calendar3")" aria-hidden="true"></i>
-                                    @p.ScheduleDate.Value.ToString("MMM d")
-                                </span>
-                            }
                             <button class="btn btn-link icon-button card-action" title="@(p.IsPinned ? "Unpin project" : "Pin project")" aria-label="@(p.IsPinned ? "Unpin project" : "Pin project")" @onclick="() => TogglePin(p.Id)" @onclick:stopPropagation="true"><i class="bi @(p.IsPinned ? "bi-pin-angle-fill" : "bi-pin-angle")"></i></button>
                             <button class="btn btn-link icon-button card-action delete-project-button" title="Delete project" aria-label="Delete project" @onclick="() => ConfirmDelete(p.Id)" @onclick:stopPropagation="true"><i class="bi bi-trash"></i></button>
                         </div>
-                    </div>
-                    <p class="text-muted mb-2">@p.DoneCount of @p.TotalCount tasks done</p>
-                    <div class="progress-summary"><span>@p.ProgressPercent.ToString("F1")%</span></div>
-                    <div class="progress task-progress">
-                        <div class="progress-bar" style="width:@(p.ProgressPercent)%"></div>
                     </div>
                 </div>
             </div>

@@ -29,23 +29,18 @@
         {
             <div class="card project-card">
                 <div class="card-body">
-                    <div class="project-title-row">
-                        <h5 class="card-title mb-1">@p.Title</h5>
-                        <div class="project-card-actions">
-                            @if (p.ScheduleDate is not null)
-                            {
-                                <span class="task-due-badge" title="@(p.ScheduleType == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")">
-                                    <i class="bi @(p.ScheduleType == TaskScheduleType.ProjectDeadline ? "bi-flag" : "bi-calendar3")" aria-hidden="true"></i>
-                                    @p.ScheduleDate.Value.ToString("MMM d")
-                                </span>
-                            }
-                            <button class="btn btn-link icon-button card-action" title="Unarchive project" aria-label="Unarchive project" @onclick="() => Unarchive(p.Id)"><i class="bi bi-box-arrow-up"></i></button>
-                        </div>
-                    </div>
-                    <p class="text-muted mb-2">@p.DoneCount of @p.TotalCount tasks done</p>
-                    <div class="progress-summary"><span>@p.ProgressPercent.ToString("F1")%</span></div>
+                    <h5 class="card-title">@p.Title</h5>
+                    <p class="project-meta">
+                        <DueChip Date="p.ScheduleDate" Type="p.ScheduleType" Muted="true" />
+                        <span class="text-muted">@p.DoneCount/@p.TotalCount tasks</span>
+                    </p>
                     <div class="progress task-progress">
                         <div class="progress-bar" style="width:@(p.ProgressPercent)%"></div>
+                    </div>
+                    <div class="project-card-footer">
+                        <div class="project-card-actions">
+                            <button class="btn btn-link icon-button card-action" title="Unarchive project" aria-label="Unarchive project" @onclick="() => Unarchive(p.Id)"><i class="bi bi-box-arrow-up"></i></button>
+                        </div>
                     </div>
                 </div>
             </div>

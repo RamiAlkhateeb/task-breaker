@@ -1,0 +1,30 @@
+@using IdeaSplit.Shared.Models
+
+@if (Date is not null)
+{
+    <span class="task-due-badge @StateClass" title="@(Type == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")">
+        <i class="bi @(Type == TaskScheduleType.ProjectDeadline ? "bi-flag" : "bi-calendar3")" aria-hidden="true"></i>
+        @Label
+    </span>
+}
+
+@code {
+    [Parameter] public DateTime? Date { get; set; }
+    [Parameter] public TaskScheduleType Type { get; set; }
+    [Parameter] public bool Muted { get; set; }
+
+    private int DaysAway => (Date!.Value.Date - DateTime.Today).Days;
+
+    private string StateClass => Muted ? "is-muted"
+        : DaysAway < 0 ? "is-overdue"
+        : DaysAway == 0 ? "is-today"
+        : "";
+
+    private string Label => DaysAway switch
+    {
+        0 => "Today",
+        1 => "Tomorrow",
+        < 0 when !Muted => $"Overdue · {Date!.Value:MMM d}",
+        _ => Date!.Value.ToString("MMM d")
+    };
+}

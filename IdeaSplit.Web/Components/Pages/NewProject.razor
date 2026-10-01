@@ -34,6 +34,11 @@
         </div>
 
         <label class="form-label mt-3" for="schedule-date">@(scheduleType == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")</label>
+        <div class="quick-dates">
+            <button type="button" class="quick-date-chip @(IsQuickDate(0) ? "active" : "")" @onclick="() => scheduleDate = DateTime.Today">Today</button>
+            <button type="button" class="quick-date-chip @(IsQuickDate(1) ? "active" : "")" @onclick="() => scheduleDate = DateTime.Today.AddDays(1)">Tomorrow</button>
+            <button type="button" class="quick-date-chip @(IsQuickDate(7) ? "active" : "")" @onclick="() => scheduleDate = DateTime.Today.AddDays(7)">Next week</button>
+        </div>
         <input id="schedule-date" type="date" class="form-control" @bind="scheduleDate" />
 
         @if (!string.IsNullOrEmpty(error))
@@ -96,6 +101,8 @@
             isLoading = false;
         }
     }
+
+    private bool IsQuickDate(int days) => scheduleDate?.Date == DateTime.Today.AddDays(days);
 
     private async Task<string> GenerateTitleSafeAsync(string ideaText)
     {
