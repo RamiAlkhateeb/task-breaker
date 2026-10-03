@@ -1,33 +1,17 @@
 @using IdeaSplit.Shared.Data
 @using IdeaSplit.Shared.Models
 @using IdeaSplit.Shared.Services
-@implements IAsyncDisposable
 @inject IProjectStore ProjectStore
 @inject GeminiService Gemini
 @inject SettingsService Settings
-@inject IJSRuntime JS
 
 @if (!string.IsNullOrEmpty(status))
 {
     <div class="composer-status" role="status">@status</div>
 }
 
-<div class="composer">
-    <textarea class="composer-input" dir="auto" rows="@Rows" @bind="text" @bind:event="oninput"
-              placeholder="@(listening ? "Listening..." : "Describe your plan...")"
-              aria-label="Describe your plan"></textarea>
-    @if (speechSupported)
-    {
-        <button type="button" class="composer-icon-btn @(listening ? "is-listening" : "")" title="@(listening ? "Stop recording" : "Dictate")"
-                aria-label="@(listening ? "Stop recording" : "Dictate")" @onclick="ToggleMic">
-            <i class="bi @(listening ? "bi-stop-fill" : "bi-mic")"></i>
-        </button>
-    }
-    <button type="button" class="composer-send-btn" title="Submit" aria-label="Submit"
-            disabled="@(string.IsNullOrWhiteSpace(text))" @onclick="Submit">
-        <i class="bi bi-arrow-up"></i>
-    </button>
-</div>
+<NxtComposer @bind-Value="text" OnSubmit="_ => Submit()" CssClass="composer"
+             Placeholder="Describe your plan..." SendLabel="Submit" SpeechLanguage="@speechLanguage" />
 
 @if (showSheet)
 {
@@ -95,19 +79,15 @@
 
     [Parameter] public EventCallback OnCreated { get; set; }
 
-    private DotNetObjectReference<PlanComposer>? selfRef;
     private string text = "";
-    private string baseText = "";
     private string? status;
     private string? error;
-    private bool speechSupported;
-    private bool listening;
+    private string speechLanguage = SettingsService.DefaultSpeechLanguage;
     private bool showSheet;
     private bool isWorking;
     private TaskScheduleType planType = TaskScheduleType.DayWeek;
     private DateTime? planDate = DateTime.Today;
 
-    private int Rows => Math.Clamp(text.Split('\n').Length, 1, 5);
     private DateTime MinDate => planType == TaskScheduleType.ProjectDeadline ? DateTime.Today.AddDays(1) : DateTime.Today;
     private string? MaxDateAttribute => planType == TaskScheduleType.ProjectDeadline
         ? DateTime.Today.AddDays(MaxDeadlineDays).ToString("yyyy-MM-dd")
@@ -115,57 +95,11 @@
 
     private bool IsQuick(int days) => planDate?.Date == DateTime.Today.AddDays(days);
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender) return;
-        selfRef = DotNetObjectReference.Create(this);
-        speechSupported = await JS.InvokeAsync<bool>("nxt.speech.isSupported");
-        if (speechSupported) StateHasChanged();
-    }
+    protected override async Task OnInitializedAsync() => speechLanguage = await Settings.GetSpeechLanguageAsync();
 
-    private async Task ToggleMic()
-    {
-        status = null;
-        if (listening)
-        {
-            await JS.InvokeVoidAsync("nxt.speech.stop");
-            return;
-        }
-
-        baseText = text;
-        var language = await Settings.GetSpeechLanguageAsync();
-        listening = await JS.InvokeAsync<bool>("nxt.speech.start", selfRef, language);
-        if (!listening) status = "Could not start the microphone.";
-    }
-
-    [JSInvokable]
-    public Task OnSpeechResult(string transcript)
-    {
-        text = string.IsNullOrWhiteSpace(baseText) ? transcript.Trim() : $"{baseText.TrimEnd()} {transcript.Trim()}";
-        return InvokeAsync(StateHasChanged);
-    }
-
-    [JSInvokable]
-    public Task OnSpeechError(string reason)
-    {
-        if (reason is "not-allowed" or "service-not-allowed")
-            status = "Microphone permission was denied.";
-        else if (reason is not ("no-speech" or "aborted"))
-            status = $"Dictation error: {reason}.";
-        return InvokeAsync(StateHasChanged);
-    }
-
-    [JSInvokable]
-    public Task OnSpeechEnded()
-    {
-        listening = false;
-        return InvokeAsync(StateHasChanged);
-    }
-
-    private async Task Submit()
+    private void Submit()
     {
         if (string.IsNullOrWhiteSpace(text)) return;
-        if (listening) await JS.InvokeVoidAsync("nxt.speech.stop");
         status = null;
         error = null;
         planType = TaskScheduleType.DayWeek;
@@ -267,12 +201,5 @@
         {
             return idea.Length > 40 ? idea[..40] + "..." : idea;
         }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        try { await JS.InvokeVoidAsync("nxt.speech.stop"); }
-        catch (Exception) { /* page is going away */ }
-        selfRef?.Dispose();
     }
 }
