@@ -27,7 +27,7 @@
     {
         @foreach (var p in projects)
         {
-            <div class="card project-card">
+            <div class="card project-card" @onclick="() => Toggle(p.Id)">
                 <div class="card-body">
                     <h5 class="card-title">@p.Title</h5>
                     <p class="project-meta">
@@ -37,9 +37,36 @@
                     <div class="progress task-progress">
                         <div class="progress-bar" style="width:@(p.ProgressPercent)%"></div>
                     </div>
+                    @if (expanded.Contains(p.Id))
+                    {
+                        <ul class="archive-tasks">
+                            @foreach (var t in p.Tasks.Where(x => x.ParentTaskId is null).OrderBy(x => x.SortOrder))
+                            {
+                                <li>
+                                    <i class="bi @(t.IsDone ? "bi-check-circle-fill is-done" : "bi-circle")" aria-hidden="true"></i>
+                                    <div class="task-main">
+                                        <span class="task-title @(t.IsDone ? "task-complete" : "")" dir="auto">@t.Title</span>
+                                        @if (!string.IsNullOrWhiteSpace(t.ProjectName))
+                                        {
+                                            <span class="task-project">@t.ProjectName</span>
+                                        }
+                                        @foreach (var sub in p.Tasks.Where(x => x.ParentTaskId == t.Id).OrderBy(x => x.SortOrder))
+                                        {
+                                            <span class="archive-subtask @(sub.IsDone ? "task-complete" : "")" dir="auto"><i class="bi @(sub.IsDone ? "bi-check-circle-fill is-done" : "bi-circle")" aria-hidden="true"></i> @sub.Title</span>
+                                        }
+                                    </div>
+                                </li>
+                            }
+                            @if (p.TotalCount == 0)
+                            {
+                                <li class="text-muted">No tasks.</li>
+                            }
+                        </ul>
+                    }
                     <div class="project-card-footer">
                         <div class="project-card-actions">
-                            <button class="btn btn-link icon-button card-action" title="Unarchive project" aria-label="Unarchive project" @onclick="() => Unarchive(p.Id)"><i class="bi bi-box-arrow-up"></i></button>
+                            <button class="btn btn-link icon-button card-action" title="@(expanded.Contains(p.Id) ? "Hide tasks" : "View tasks")" aria-label="@(expanded.Contains(p.Id) ? "Hide tasks" : "View tasks")" @onclick="() => Toggle(p.Id)" @onclick:stopPropagation="true"><i class="bi @(expanded.Contains(p.Id) ? "bi-chevron-up" : "bi-chevron-down")"></i></button>
+                            <button class="btn btn-link icon-button card-action" title="Unarchive project" aria-label="Unarchive project" @onclick="() => Unarchive(p.Id)" @onclick:stopPropagation="true"><i class="bi bi-box-arrow-up"></i></button>
                         </div>
                     </div>
                 </div>
@@ -50,6 +77,12 @@
 
 @code {
     private List<Project>? projects;
+    private readonly HashSet<int> expanded = [];
+
+    private void Toggle(int projectId)
+    {
+        if (!expanded.Remove(projectId)) expanded.Add(projectId);
+    }
 
     protected override async Task OnInitializedAsync() => await LoadProjects();
 
