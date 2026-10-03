@@ -1,0 +1,68 @@
+@page "/ai"
+@using IdeaSplit.Shared.Data
+@using IdeaSplit.Shared.Models
+@using IdeaSplit.Shared.Services
+@inject GeminiService Gemini
+@inject IProjectStore ProjectStore
+@inject SettingsService Settings
+
+<PageTitle>Assistant · NxtTask</PageTitle>
+
+@* The family AI assistant (Nxt.UI AiChat), same as Makdous: describe what you need done and when,
+   and the tasks land on the right days. *@
+<div class="assistant-page">
+    <NxtPageHeader Icon="✨" Title="Assistant" Subtitle="Describe what you need to get done, and when" BackHref="/" />
+    <AiChat OnSend="HandleSendAsync" ShowMic="true" SpeechLanguage="@speechLanguage"
+            EmptyText="Tell me what you want to get done. I'll break it into tasks and put them on the right days."
+            Placeholder="e.g. prepare for my driving test on Friday"
+            Suggestions="@Suggestions" />
+</div>
+
+@code {
+    private static readonly string[] Suggestions =
+    [
+        "Clean the flat tomorrow",
+        "Prepare for my exam next Thursday",
+        "Plan a birthday party by the 20th"
+    ];
+
+    private string speechLanguage = SettingsService.DefaultSpeechLanguage;
+
+    protected override async Task OnInitializedAsync() => speechLanguage = await Settings.GetSpeechLanguageAsync();
+
+    private async Task<AiReply> HandleSendAsync(string text)
+    {
+        var plan = await Gemini.PlanFromChatAsync(text);
+        // Single-day plans are the user's own to-dos; multi-day plans keep a project name on each task.
+        var projectName = plan.Days.Count > 1 ? plan.Title : null;
+
+        foreach (var day in plan.Days)
+        {
+            var project = await ProjectStore.GetOrCreateDayProjectAsync(day.Date);
+            var next = project.Tasks.Count(task => task.ParentTaskId is null);
+            foreach (var title in day.Tasks)
+                project.Tasks.Add(new TaskItem { Title = title, ProjectName = projectName, SortOrder = next++ });
+            project.IsArchived = false;
+            await ProjectStore.SaveProjectAsync(project);
+        }
+
+        var taskCount = plan.Days.Sum(day => day.Tasks.Count);
+        return new AiReply
+        {
+            Text = plan.Days.Count == 1
+                ? $"Done! I added {taskCount} tasks to {DayLabel(plan.Days[0].Date)}."
+                : $"Done! I spread {taskCount} tasks over {plan.Days.Count} days.",
+            Sections = plan.Days.Select(day => new AiListSection(DayLabel(day.Date), day.Tasks.Select(t => new AiListItem(t)).ToList())).ToList(),
+            ActionText = "Open my days",
+            ActionHref = "/"
+        };
+    }
+
+    private static string DayLabel(DateTime date) =>
+        (date.Date - DateTime.Today).Days switch
+        {
+            0 => "Today",
+            1 => "Tomorrow",
+            _ => date.ToString("ddd d MMM")
+        };
+}

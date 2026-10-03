@@ -119,7 +119,7 @@
     {
         if (!firstRender) return;
         selfRef = DotNetObjectReference.Create(this);
-        speechSupported = await JS.InvokeAsync<bool>("ideaSplitSpeech.isSupported");
+        speechSupported = await JS.InvokeAsync<bool>("nxt.speech.isSupported");
         if (speechSupported) StateHasChanged();
     }
 
@@ -128,13 +128,13 @@
         status = null;
         if (listening)
         {
-            await JS.InvokeVoidAsync("ideaSplitSpeech.stop");
+            await JS.InvokeVoidAsync("nxt.speech.stop");
             return;
         }
 
         baseText = text;
         var language = await Settings.GetSpeechLanguageAsync();
-        listening = await JS.InvokeAsync<bool>("ideaSplitSpeech.start", selfRef, language);
+        listening = await JS.InvokeAsync<bool>("nxt.speech.start", selfRef, language);
         if (!listening) status = "Could not start the microphone.";
     }
 
@@ -165,7 +165,7 @@
     private async Task Submit()
     {
         if (string.IsNullOrWhiteSpace(text)) return;
-        if (listening) await JS.InvokeVoidAsync("ideaSplitSpeech.stop");
+        if (listening) await JS.InvokeVoidAsync("nxt.speech.stop");
         status = null;
         error = null;
         planType = TaskScheduleType.DayWeek;
@@ -271,7 +271,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        try { await JS.InvokeVoidAsync("ideaSplitSpeech.stop"); }
+        try { await JS.InvokeVoidAsync("nxt.speech.stop"); }
         catch (Exception) { /* page is going away */ }
         selfRef?.Dispose();
     }

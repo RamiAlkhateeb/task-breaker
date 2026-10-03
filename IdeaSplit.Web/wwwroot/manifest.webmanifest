@@ -1,0 +1,17 @@
+{
+  "name": "NxtTask",
+  "short_name": "NxtTask",
+  "description": "Turn ideas into clear, manageable tasks, planned across your days.",
+  "id": "./",
+  "start_url": "./",
+  "display": "standalone",
+  "lang": "en",
+  "background_color": "#f7f7f9",
+  "theme_color": "#f7f7f9",
+  "icons": [
+    { "src": "icons/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "icons/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" },
+    { "src": "icons/logo.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" }
+  ]
+}

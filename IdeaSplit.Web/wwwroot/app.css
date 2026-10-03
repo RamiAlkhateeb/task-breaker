@@ -1,24 +1,27 @@
 :root {
-    --color-primary: #ff2d55;
-    --color-primary-light: rgba(255, 45, 85, .1);
-    --color-primary-hover: #e11d48;
-    --color-ink: #1c1c1e;
-    --color-page: #f7f7f9;
-    --color-card-bg: #ffffff;
-    --color-text-main: #1c1c1e;
-    --color-text-secondary: #8e8e93;
-    --color-border: #e5e5ea;
-    --color-success: #22a85a;
-    --color-danger: #e11d48;
+    /* Colours come from the shared family tokens in Nxt.UI (nxt.css), which also
+       carry the dark theme. These aliases keep the existing selectors working. */
+    --color-primary: var(--nxt-accent);
+    --color-primary-light: var(--nxt-accent-soft);
+    --color-primary-hover: var(--nxt-accent-hover);
+    --color-ink: var(--nxt-ink);
+    --color-page: var(--nxt-page);
+    --color-card-bg: var(--nxt-card);
+    --color-inset: var(--nxt-inset);
+    --color-text-main: var(--nxt-text);
+    --color-text-secondary: var(--nxt-text-2);
+    --color-border: var(--nxt-border);
+    --color-success: var(--nxt-success);
+    --color-danger: var(--nxt-danger);
 
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, .05);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, .07);
-    --shadow-lg: 0 12px 36px rgba(0, 0, 0, .08);
+    --shadow-sm: var(--nxt-shadow-sm);
+    --shadow-md: var(--nxt-shadow-md);
+    --shadow-lg: var(--nxt-shadow-lg);
 
-    --radius-sm: 12px;
-    --radius-md: 16px;
-    --radius-lg: 28px;
-    --radius-pill: 999px;
+    --radius-sm: var(--nxt-radius-sm);
+    --radius-md: var(--nxt-radius-md);
+    --radius-lg: var(--nxt-radius-lg);
+    --radius-pill: var(--nxt-radius-pill);
 }
 
 html, body { min-height: 100%; }
@@ -26,7 +29,7 @@ body {
     margin: 0;
     background-color: var(--color-page);
     color: var(--color-text-main);
-    font-family: "Cairo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--nxt-font);
     font-size: 1rem;
 }
 a, .btn-link { color: var(--color-primary); }
@@ -276,7 +279,7 @@ textarea.form-control { min-height: 120px; }
 .composer-sheet .schedule-type-toggle { display: flex; }
 .composer-sheet-actions { display: flex; gap: 10px; margin-top: 18px; }
 .composer-sheet-actions .btn { flex: 1; }
-@keyframes composer-pulse { 50% { box-shadow: 0 0 0 7px rgba(255, 45, 85, .15); } }
+@keyframes composer-pulse { 50% { box-shadow: 0 0 0 7px rgba(var(--nxt-accent-rgb), .15); } }
 @keyframes composer-fade { from { opacity: 0; } }
 @keyframes composer-slide { from { transform: translateY(40px); opacity: 0; } }
 
@@ -292,3 +295,7 @@ textarea.form-control { min-height: 120px; }
 @media (hover: none) { .task-actions { opacity: .65; } }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* Pages built from the shared Nxt.UI shell (settings, assistant) sit on the page, not inside a card. */
+.assistant-page { width: min(100%, 760px); margin: 0 auto; }
+.assistant-page .nxt-page-header { border-radius: var(--radius-lg); }
