@@ -80,6 +80,7 @@
                                 <span class="task-project">@t.ProjectName</span>
                             }
                         </div>
+                        <button class="btn btn-link icon-button task-menu-btn" title="Edit" aria-label="Edit" @onclick="() => StartEdit(t)"><i class="bi bi-pencil"></i></button>
                         <div class="task-menu-wrap">
                             <button class="btn btn-link icon-button task-menu-btn" title="More" aria-label="More options" aria-haspopup="menu" aria-expanded="@(menuFor == t.Id)" @onclick="() => ToggleMenu(t)"><i class="bi bi-three-dots-vertical"></i></button>
                             @if (menuFor == t.Id)
@@ -95,7 +96,6 @@
                                         <button type="button" role="menuitem" @onclick="() => DuplicateToNextDay(t)"><i class="bi bi-copy" aria-hidden="true"></i> Duplicate to next day</button>
                                     }
                                     <button type="button" role="menuitem" @onclick="() => { CloseMenu(); ToggleAddSubtask(t); }"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add subtask</button>
-                                    <button type="button" role="menuitem" @onclick="() => { CloseMenu(); StartEdit(t); }"><i class="bi bi-pencil" aria-hidden="true"></i> Edit</button>
                                     <button type="button" role="menuitem" class="is-danger" @onclick="async () => { CloseMenu(); await DeleteTask(t); }"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button>
                                 </div>
                             }
@@ -116,13 +116,13 @@
                         else
                         {
                             <span class="task-title @(sub.IsDone ? "task-complete" : "") @(ContainsArabic(sub.Title) ? "arabic-text" : "")">@sub.Title</span>
+                            <button class="btn btn-link icon-button task-menu-btn" title="Edit" aria-label="Edit" @onclick="() => StartEdit(sub)"><i class="bi bi-pencil"></i></button>
                             <div class="task-menu-wrap">
                                 <button class="btn btn-link icon-button task-menu-btn" title="More" aria-label="More options" aria-haspopup="menu" aria-expanded="@(menuFor == sub.Id)" @onclick="() => ToggleMenu(sub)"><i class="bi bi-three-dots-vertical"></i></button>
                                 @if (menuFor == sub.Id)
                                 {
                                     <div class="menu-backdrop" @onclick="CloseMenu"></div>
                                     <div class="task-menu" role="menu">
-                                        <button type="button" role="menuitem" @onclick="() => { CloseMenu(); StartEdit(sub); }"><i class="bi bi-pencil" aria-hidden="true"></i> Edit</button>
                                         <button type="button" role="menuitem" class="is-danger" @onclick="async () => { CloseMenu(); await DeleteTask(sub); }"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button>
                                     </div>
                                 }
