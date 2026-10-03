@@ -80,14 +80,25 @@
                                 <span class="task-project">@t.ProjectName</span>
                             }
                         </div>
-                        <div class="task-actions">
-                            <button class="btn btn-link icon-button" title="Add subtask" aria-label="Add subtask" @onclick="() => ToggleAddSubtask(t)"><i class="bi bi-plus-lg"></i></button>
-                            @if (project.ScheduleType == TaskScheduleType.DayWeek && !t.IsDone)
+                        <button class="btn btn-link icon-button task-menu-btn" title="Edit" aria-label="Edit" @onclick="() => StartEdit(t)"><i class="bi bi-pencil"></i></button>
+                        <div class="task-menu-wrap">
+                            <button class="btn btn-link icon-button task-menu-btn" title="More" aria-label="More options" aria-haspopup="menu" aria-expanded="@(menuFor == t.Id)" @onclick="() => ToggleMenu(t)"><i class="bi bi-three-dots-vertical"></i></button>
+                            @if (menuFor == t.Id)
                             {
-                                <button class="btn btn-link icon-button" title="Move to next day" aria-label="Move to next day" @onclick="() => MoveToNextDay(t)"><i class="bi bi-arrow-right-circle"></i></button>
+                                <div class="menu-backdrop" @onclick="CloseMenu"></div>
+                                <div class="task-menu" role="menu">
+                                    @if (project.ScheduleType == TaskScheduleType.DayWeek)
+                                    {
+                                        @if (!t.IsDone)
+                                        {
+                                            <button type="button" role="menuitem" @onclick="() => MoveToNextDay(t)"><i class="bi bi-arrow-right-circle" aria-hidden="true"></i> Move to next day</button>
+                                        }
+                                        <button type="button" role="menuitem" @onclick="() => DuplicateToNextDay(t)"><i class="bi bi-copy" aria-hidden="true"></i> Duplicate to next day</button>
+                                    }
+                                    <button type="button" role="menuitem" @onclick="() => { CloseMenu(); ToggleAddSubtask(t); }"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add subtask</button>
+                                    <button type="button" role="menuitem" class="is-danger" @onclick="async () => { CloseMenu(); await DeleteTask(t); }"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button>
+                                </div>
                             }
-                            <button class="btn btn-link icon-button" title="Edit" aria-label="Edit" @onclick="() => StartEdit(t)"><i class="bi bi-pencil"></i></button>
-                            <button class="btn btn-link text-danger icon-button" title="Delete" aria-label="Delete" @onclick="() => DeleteTask(t)"><i class="bi bi-trash"></i></button>
                         </div>
                     }
                 </div>
@@ -105,9 +116,16 @@
                         else
                         {
                             <span class="task-title @(sub.IsDone ? "task-complete" : "") @(ContainsArabic(sub.Title) ? "arabic-text" : "")">@sub.Title</span>
-                            <div class="task-actions">
-                                <button class="btn btn-link icon-button" title="Edit" aria-label="Edit" @onclick="() => StartEdit(sub)"><i class="bi bi-pencil"></i></button>
-                                <button class="btn btn-link text-danger icon-button" title="Delete" aria-label="Delete" @onclick="() => DeleteTask(sub)"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-link icon-button task-menu-btn" title="Edit" aria-label="Edit" @onclick="() => StartEdit(sub)"><i class="bi bi-pencil"></i></button>
+                            <div class="task-menu-wrap">
+                                <button class="btn btn-link icon-button task-menu-btn" title="More" aria-label="More options" aria-haspopup="menu" aria-expanded="@(menuFor == sub.Id)" @onclick="() => ToggleMenu(sub)"><i class="bi bi-three-dots-vertical"></i></button>
+                                @if (menuFor == sub.Id)
+                                {
+                                    <div class="menu-backdrop" @onclick="CloseMenu"></div>
+                                    <div class="task-menu" role="menu">
+                                        <button type="button" role="menuitem" class="is-danger" @onclick="async () => { CloseMenu(); await DeleteTask(sub); }"><i class="bi bi-trash" aria-hidden="true"></i> Delete</button>
+                                    </div>
+                                }
                             </div>
                         }
                     </div>
@@ -151,6 +169,7 @@
     private bool isEditingTitle;
     private string editTitleText = "";
     private bool showCompleted;
+    private int? menuFor;
     private string newTaskText = "";
     private int? addingSubtaskFor;
     private string newSubtaskText = "";
@@ -180,8 +199,38 @@
         }
     }
 
+    private void ToggleMenu(TaskItem t) => menuFor = menuFor == t.Id ? null : t.Id;
+
+    private void CloseMenu() => menuFor = null;
+
+    private async Task DuplicateToNextDay(TaskItem t)
+    {
+        menuFor = null;
+        if (project is null) return;
+        var target = await ProjectStore.GetOrCreateDayProjectAsync((project.ScheduleDate ?? DateTime.Today).Date.AddDays(1));
+
+        var copy = new TaskItem
+        {
+            Title = t.Title,
+            ProjectName = t.ProjectName,
+            SortOrder = target.Tasks.Count(x => x.ParentTaskId is null)
+        };
+        target.Tasks.Add(copy);
+        target.IsArchived = false;
+        await ProjectStore.SaveProjectAsync(target);
+
+        var subtasks = project.Tasks.Where(x => x.ParentTaskId == t.Id).OrderBy(x => x.SortOrder).ToList();
+        if (subtasks.Count > 0)
+        {
+            foreach (var (sub, index) in subtasks.Select((sub, index) => (sub, index)))
+                target.Tasks.Add(new TaskItem { ParentTaskId = copy.Id, Title = sub.Title, SortOrder = index });
+            await ProjectStore.SaveProjectAsync(target);
+        }
+    }
+
     private async Task MoveToNextDay(TaskItem t)
     {
+        menuFor = null;
         if (project is null) return;
         var target = await ProjectStore.GetOrCreateDayProjectAsync((project.ScheduleDate ?? DateTime.Today).Date.AddDays(1));
 
