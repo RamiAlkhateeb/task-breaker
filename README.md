@@ -1,4 +1,4 @@
-# IdeaSplit
+# NxtTask (IdeaSplit)
 
 IdeaSplit is a fully client-side Blazor WebAssembly app. Projects, settings, and API keys are stored in the browser's local storage; no backend or database is required.
 
@@ -17,10 +17,12 @@ Open the URL shown in the console. Add a Gemini API key in Settings before creat
 
 ## Static deployment
 
-Publishing produces static files under `IdeaSplit.Web/bin/Release/net8.0/publish/wwwroot`:
+Publishing produces static files under `IdeaSplit.Web/bin/Release/net10.0/publish/wwwroot`:
 
 ```bash
 dotnet publish IdeaSplit.Web -c Release
 ```
 
 Deploy that `wwwroot` folder to GitHub Pages, Cloudflare Pages, Netlify, or any other static host. For GitHub Pages project sites, update the `<base href="/">` value in `IdeaSplit.Web/wwwroot/index.html` to include the repository path (for example, `/IdeaSplit/`).
+
+Shared UI (settings, AI chat, theme, logos) comes from the `Nxt.UI` submodule in `lib/Nxt.UI`. Clone with `git clone --recurse-submodules`, or run `git submodule update --init` after cloning.

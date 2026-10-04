@@ -1,0 +1,3 @@
+[submodule "lib/Nxt.UI"]
+	path = lib/Nxt.UI
+	url = https://github.com/RamiAlkhateeb/Nxt.UI.git
