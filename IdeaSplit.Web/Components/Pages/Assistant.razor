@@ -1,4 +1,6 @@
 @page "/ai"
+@using System.Globalization
+@using System.Text
 @using IdeaSplit.Shared.Data
 @using IdeaSplit.Shared.Models
 @using IdeaSplit.Shared.Services
@@ -8,55 +10,130 @@
 
 <PageTitle>Assistant · NxtTask</PageTitle>
 
-@* The family AI assistant (Nxt.UI AiChat), same as Makdous: describe what you need done and when,
-   and the tasks land on the right days. *@
+@* The family AI assistant (Nxt.UI AiChat). It talks things through first, suggests tasks for the week,
+   and only adds them to the user's days after they agree. *@
 <div class="assistant-page">
-    <NxtPageHeader Icon="✨" Title="Assistant" Subtitle="Describe what you need to get done, and when" BackHref="/" />
+    <NxtPageHeader Icon="✨" Title="Assistant" Subtitle="Talk through your week, then add what fits" BackHref="/" />
     <AiChat OnSend="HandleSendAsync" ShowMic="true" SpeechLanguage="@speechLanguage"
-            EmptyText="Tell me what you want to get done. I'll break it into tasks and put them on the right days."
-            Placeholder="What do you need to get done?"
+            EmptyText="Tell me what you have going on. I'll ask a question or two, suggest tasks for your week, and add them once you say so."
+            Placeholder="What do you have going on?"
             Suggestions="@Suggestions" />
 </div>
 
 @code {
+    private const int PlanContextDays = 30;
+
     private static readonly string[] Suggestions =
     [
-        "Clean the flat tomorrow",
-        "Prepare for my exam next Thursday",
-        "Plan a birthday party by the 20th"
+        "I have an exam on Thursday",
+        "Busy week at work, but I want to exercise",
+        "Help me plan this week"
     ];
 
+    private readonly List<AssistantTurn> conversation = [];
+    private List<SuggestedTask>? pendingProposal;
     private string speechLanguage = SettingsService.DefaultSpeechLanguage;
 
     protected override async Task OnInitializedAsync() => speechLanguage = await Settings.GetSpeechLanguageAsync();
 
     private async Task<AiReply> HandleSendAsync(string text)
     {
-        var plan = await Gemini.PlanFromChatAsync(text);
-        // Single-day plans are the user's own to-dos; multi-day plans keep a project name on each task.
-        var projectName = plan.Days.Count > 1 ? plan.Title : null;
-
-        foreach (var day in plan.Days)
+        conversation.Add(new AssistantTurn(true, text));
+        AssistantResult result;
+        try
         {
-            var project = await ProjectStore.GetOrCreateDayProjectAsync(day.Date);
+            result = await Gemini.ConverseAsync(conversation, await BuildPlanContextAsync());
+        }
+        catch
+        {
+            // Keep the transcript clean so the user can simply try again.
+            conversation.RemoveAt(conversation.Count - 1);
+            throw;
+        }
+
+        // Nothing is written without a proposal the user has seen; an early "add" becomes a proposal.
+        if (result.Action == AssistantAction.Add && pendingProposal is not null)
+        {
+            var tasks = result.Tasks.Count > 0 ? result.Tasks : pendingProposal;
+            await AddToPlanAsync(tasks);
+            pendingProposal = null;
+
+            var dayCount = tasks.Select(task => task.Date).Distinct().Count();
+            var summary = $"Added {Plural(tasks.Count, "task")} to {Plural(dayCount, "day")}.";
+            conversation.Add(new AssistantTurn(false, $"{result.Reply} [{summary}]".Trim()));
+            return new AiReply
+            {
+                Text = string.IsNullOrWhiteSpace(result.Reply) ? summary : $"{result.Reply} {summary}",
+                Sections = ToSections(tasks),
+                ActionText = "Open my days",
+                ActionHref = "/"
+            };
+        }
+
+        if (result.Tasks.Count > 0 && result.Action is AssistantAction.Propose or AssistantAction.Add)
+        {
+            pendingProposal = result.Tasks;
+            var reply = string.IsNullOrWhiteSpace(result.Reply)
+                ? "Here's what I'd suggest. Want me to add these to your plan?"
+                : result.Reply;
+            conversation.Add(new AssistantTurn(false, $"{reply}\nProposed tasks (not added yet):\n{Describe(result.Tasks)}"));
+            return new AiReply { Text = reply, Sections = ToSections(result.Tasks) };
+        }
+
+        conversation.Add(new AssistantTurn(false, result.Reply));
+        return new AiReply { Text = result.Reply };
+    }
+
+    private async Task AddToPlanAsync(List<SuggestedTask> tasks)
+    {
+        foreach (var day in tasks.GroupBy(task => task.Date).OrderBy(group => group.Key))
+        {
+            var project = await ProjectStore.GetOrCreateDayProjectAsync(day.Key);
             var next = project.Tasks.Count(task => task.ParentTaskId is null);
-            foreach (var title in day.Tasks)
-                project.Tasks.Add(new TaskItem { Title = title, ProjectName = projectName, SortOrder = next++ });
+            foreach (var task in day)
+                project.Tasks.Add(new TaskItem { Title = task.Title, ProjectName = task.ProjectName, SortOrder = next++ });
             project.IsArchived = false;
             await ProjectStore.SaveProjectAsync(project);
         }
-
-        var taskCount = plan.Days.Sum(day => day.Tasks.Count);
-        return new AiReply
-        {
-            Text = plan.Days.Count == 1
-                ? $"Done! I added {taskCount} tasks to {DayLabel(plan.Days[0].Date)}."
-                : $"Done! I spread {taskCount} tasks over {plan.Days.Count} days.",
-            Sections = plan.Days.Select(day => new AiListSection(DayLabel(day.Date), day.Tasks.Select(t => new AiListItem(t)).ToList())).ToList(),
-            ActionText = "Open my days",
-            ActionHref = "/"
-        };
     }
+
+    /// <summary>What's already planned, so the assistant can balance days and avoid duplicates.</summary>
+    private async Task<string> BuildPlanContextAsync()
+    {
+        var today = DateTime.Today;
+        var days = (await ProjectStore.GetProjectsAsync())
+            .Where(project => project.ScheduleType == TaskScheduleType.DayWeek && project.ScheduleDate is not null)
+            .ToList();
+
+        var plan = new StringBuilder();
+        for (var offset = 0; offset <= PlanContextDays; offset++)
+        {
+            var date = today.AddDays(offset);
+            var open = days
+                .Where(project => project.ScheduleDate!.Value.Date == date)
+                .SelectMany(project => project.Tasks)
+                .Where(task => task.ParentTaskId is null && !task.IsDone)
+                .Select(task => string.IsNullOrWhiteSpace(task.ProjectName) ? task.Title : $"{task.Title} [{task.ProjectName}]")
+                .ToList();
+
+            if (open.Count == 0 && offset > 6) continue;
+            plan.Append(date.ToString("ddd yyyy-MM-dd", CultureInfo.InvariantCulture)).Append(": ")
+                .AppendLine(open.Count == 0 ? "nothing planned" : string.Join("; ", open));
+        }
+        return plan.ToString();
+    }
+
+    private static IReadOnlyList<AiListSection> ToSections(IEnumerable<SuggestedTask> tasks) =>
+        tasks.GroupBy(task => task.Date)
+            .OrderBy(group => group.Key)
+            .Select(group => new AiListSection(DayLabel(group.Key), group.Select(task => new AiListItem(task.Title, task.ProjectName)).ToList()))
+            .ToList();
+
+    private static string Describe(IEnumerable<SuggestedTask> tasks) =>
+        string.Join("\n", tasks.Select(task =>
+            $"- {task.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}: {task.Title}{(task.ProjectName is null ? "" : $" [{task.ProjectName}]")}"));
+
+    private static string Plural(int count, string noun) => count == 1 ? $"1 {noun}" : $"{count} {noun}s";
 
     private static string DayLabel(DateTime date) =>
         (date.Date - DateTime.Today).Days switch

@@ -5,11 +5,24 @@ namespace IdeaSplit.Shared.Services;
 
 public sealed record IdeaBreakdownResult(List<string> Tasks);
 
-/// <summary>A day of work proposed by the assistant.</summary>
-public sealed record PlannedDay(DateTime Date, List<string> Tasks);
+/// <summary>One message in the assistant conversation, as plain text (proposals included).</summary>
+public sealed record AssistantTurn(bool FromUser, string Text);
 
-/// <summary>What the chat assistant proposes: an optional short project name and a dated plan.</summary>
-public sealed record ChatPlan(string? Title, List<PlannedDay> Days);
+/// <summary>A task the assistant suggests for a given day.</summary>
+public sealed record SuggestedTask(string Title, DateTime Date, string? ProjectName);
+
+/// <summary>What the assistant wants to do with its reply.</summary>
+public enum AssistantAction
+{
+    /// <summary>Still talking: a question or an answer, nothing proposed.</summary>
+    Discuss,
+    /// <summary>Suggesting tasks and asking whether to add them.</summary>
+    Propose,
+    /// <summary>The user agreed; add the tasks.</summary>
+    Add
+}
+
+public sealed record AssistantResult(string Reply, AssistantAction Action, List<SuggestedTask> Tasks);
 
 /// <summary>
 /// NxtTask's prompts. Transport, model fallback and structured JSON come from the family's shared
@@ -102,31 +115,48 @@ public class GeminiService
     }
 
     /// <summary>
-    /// The chat assistant: the user describes what they want done and when, in their own words
-    /// ("prepare for the exam on Friday", "clean the flat tomorrow"). The model picks the days.
+    /// The planning assistant. It talks first (a question or two when something important is unclear),
+    /// then proposes dated tasks and asks before adding. Tasks are only returned with
+    /// <see cref="AssistantAction.Add"/> after the user has agreed to a proposal.
     /// </summary>
-    public async Task<ChatPlan> PlanFromChatAsync(string request)
+    public async Task<AssistantResult> ConverseAsync(IReadOnlyList<AssistantTurn> conversation, string existingPlan)
     {
         var today = DateTime.Today;
+        var transcript = string.Join("\n\n", conversation.Select(turn => $"{(turn.FromUser ? "User" : "Assistant")}: {turn.Text}"));
         var prompt = $"""
-            Today's date is {today:yyyy-MM-dd} ({today.DayOfWeek}). The user describes something they want to get done.
-            Turn it into a plan of small, clear, actionable tasks spread over the right days.
-            - Resolve relative dates ("tomorrow", "Friday", "next week", "by the 20th") against today and return
-              explicit ISO dates (yyyy-MM-dd). If no timing is given, put everything on today.
-            - Never use a date before today or more than {MaxPlanDays} days ahead.
-            - 1 to 6 tasks per day, ordered so earlier days lay the groundwork for later ones.
-            - "title": a 2 to 3 word name for the whole plan.
-            Write the title and tasks in the same language as the user's message.
+            You are the planning assistant inside NxtTask, a to-do app. Today is {today:yyyy-MM-dd} ({today.DayOfWeek}).
+            The user tells you what they have going on. Behave like a thoughtful friend helping them plan the week:
 
-            User message: {request}
+            1. Discuss first. If something important is unclear (a deadline, how much time they have, which days are
+               busy), ask one or two short questions. Don't ask about things you can reasonably assume and don't drag it out.
+               Use action "discuss" and an empty task list.
+            2. Recommend. When you understand enough, or they ask, suggest small, clear, actionable tasks with dates from
+               {today:yyyy-MM-dd} to {today.AddDays(6):yyyy-MM-dd} (only later, up to {today.AddDays(MaxPlanDays):yyyy-MM-dd},
+               if they mention a later deadline). Balance the load using their existing plan below and don't duplicate
+               tasks already planned. Use action "propose", put every suggested task in "tasks", and end the reply by
+               asking whether to add them to their plan. Don't list the tasks in the reply text; the app shows them.
+            3. Add only with consent. Use action "add" only when the user clearly agrees to your latest proposal
+               (e.g. "yes", "add them", "go ahead", or "add all except the gym"). Then "tasks" must be exactly the tasks
+               to add, applying any changes they asked for. If they ask for changes without agreeing, "propose" again
+               with the full revised list.
+
+            For tasks that serve one larger goal across different days, set "project" to a 2 to 3 word name for that
+            goal; otherwise leave it empty. Keep "reply" short and friendly. Write everything in the user's language.
+
+            Existing plan:
+            {existingPlan}
+
+            Conversation so far:
+            {transcript}
             """;
         var schema = new
         {
             type = "OBJECT",
             properties = new
             {
-                title = new { type = "STRING" },
-                days = new
+                reply = new { type = "STRING" },
+                action = new { type = "STRING", @enum = new[] { "discuss", "propose", "add" } },
+                tasks = new
                 {
                     type = "ARRAY",
                     items = new
@@ -134,33 +164,44 @@ public class GeminiService
                         type = "OBJECT",
                         properties = new
                         {
+                            title = new { type = "STRING" },
                             date = new { type = "STRING" },
-                            tasks = new { type = "ARRAY", items = new { type = "STRING" } }
+                            project = new { type = "STRING" }
                         },
-                        required = new[] { "date", "tasks" }
+                        required = new[] { "title", "date" }
                     }
                 }
             },
-            required = new[] { "title", "days" }
+            required = new[] { "reply", "action", "tasks" }
         };
 
-        ChatPlan? plan = null;
-        await _gemini.GenerateJsonAsync<ChatPlanResult>(prompt, schema, result =>
+        AssistantResult? answer = null;
+        await _gemini.GenerateJsonAsync<ConversationResult>(prompt, schema, result =>
         {
-            var days = (result.Days ?? [])
-                .Select(day => (Ok: DateTime.TryParse(day.Date, out var date), Date: date.Date,
-                    Tasks: day.Tasks.Select(t => t.Trim()).Where(t => t.Length > 0).ToList()))
-                .Where(day => day.Ok && day.Tasks.Count > 0 && day.Date >= today && day.Date <= today.AddDays(MaxPlanDays))
-                .GroupBy(day => day.Date)
-                .OrderBy(group => group.Key)
-                .Select(group => new PlannedDay(group.Key, group.SelectMany(day => day.Tasks).ToList()))
+            var tasks = (result.Tasks ?? [])
+                .Where(task => !string.IsNullOrWhiteSpace(task.Title))
+                .Select(task => new SuggestedTask(
+                    task.Title!.Trim(),
+                    ClampDate(DateTime.TryParse(task.Date, out var date) ? date.Date : today, today),
+                    string.IsNullOrWhiteSpace(task.Project) ? null : task.Project.Trim()))
+                .OrderBy(task => task.Date)
                 .ToList();
-            if (days.Count == 0) throw new InvalidOperationException("Gemini couldn't turn that into tasks. Try adding a little more detail.");
-            plan = new ChatPlan(string.IsNullOrWhiteSpace(result.Title) ? null : result.Title.Trim(), days);
+            var action = result.Action?.Trim().ToLowerInvariant() switch
+            {
+                "add" => AssistantAction.Add,
+                "propose" when tasks.Count > 0 => AssistantAction.Propose,
+                _ => AssistantAction.Discuss
+            };
+            if (string.IsNullOrWhiteSpace(result.Reply) && action == AssistantAction.Discuss)
+                throw new InvalidOperationException("The assistant returned an empty reply.");
+            answer = new AssistantResult(result.Reply?.Trim() ?? "", action, tasks);
             return result;
         });
-        return plan!;
+        return answer!;
     }
+
+    private static DateTime ClampDate(DateTime date, DateTime today) =>
+        date < today ? today : date > today.AddDays(MaxPlanDays) ? today.AddDays(MaxPlanDays) : date;
 
     private static List<List<string>> SplitEvenly(List<string> tasks, int dayCount)
     {
@@ -174,14 +215,16 @@ public class GeminiService
     private sealed class DayPlanResult { [JsonPropertyName("days")] public List<DayPlan>? Days { get; set; } }
     private sealed class DayPlan { [JsonPropertyName("tasks")] public List<string> Tasks { get; set; } = []; }
     private sealed class TitleResult { [JsonPropertyName("title")] public string Title { get; set; } = ""; }
-    private sealed class ChatPlanResult
+    private sealed class ConversationResult
+    {
+        [JsonPropertyName("reply")] public string? Reply { get; set; }
+        [JsonPropertyName("action")] public string? Action { get; set; }
+        [JsonPropertyName("tasks")] public List<ConversationTask>? Tasks { get; set; }
+    }
+    private sealed class ConversationTask
     {
         [JsonPropertyName("title")] public string? Title { get; set; }
-        [JsonPropertyName("days")] public List<ChatDay>? Days { get; set; }
-    }
-    private sealed class ChatDay
-    {
-        [JsonPropertyName("date")] public string Date { get; set; } = "";
-        [JsonPropertyName("tasks")] public List<string> Tasks { get; set; } = [];
+        [JsonPropertyName("date")] public string? Date { get; set; }
+        [JsonPropertyName("project")] public string? Project { get; set; }
     }
 }
