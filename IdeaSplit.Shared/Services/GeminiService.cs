@@ -1,214 +1,187 @@
-using System.Globalization;
-using System.Net.Http.Json;
-using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Logging;
+using Nxt.UI.Ai;
 
 namespace IdeaSplit.Shared.Services;
 
-/// <summary>One message in the planning conversation. Assistant turns hold the raw JSON the model returned.</summary>
-public sealed record ChatTurn(bool FromUser, string Text);
+public sealed record IdeaBreakdownResult(List<string> Tasks);
 
-public sealed record ProposedTask(string Title, DateTime Date, string? ProjectName);
+/// <summary>A day of work proposed by the assistant.</summary>
+public sealed record PlannedDay(DateTime Date, List<string> Tasks);
 
-public sealed record AssistantReply(string Reply, List<ProposedTask> Tasks, string RawJson);
+/// <summary>What the chat assistant proposes: an optional short project name and a dated plan.</summary>
+public sealed record ChatPlan(string? Title, List<PlannedDay> Days);
 
+/// <summary>
+/// NxtTask's prompts. Transport, model fallback and structured JSON come from the family's shared
+/// <see cref="GeminiClient"/>.
+/// </summary>
 public class GeminiService
 {
-    private const int MaxDaysAhead = 30;
+    private const int MaxPlanDays = 30;
+    private readonly GeminiClient _gemini;
 
-    private static readonly string[] FallbackModels =
-    [
-        "gemini-3.5-flash-lite",
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-lite",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro"
-    ];
+    public GeminiService(GeminiClient gemini) => _gemini = gemini;
 
-    private readonly HttpClient _http;
-    private readonly SettingsService _settings;
-    private readonly ILogger<GeminiService> _logger;
-
-    public GeminiService(HttpClient http, SettingsService settings, ILogger<GeminiService> logger)
+    public async Task<IdeaBreakdownResult> BreakDownIdeaAsync(string idea)
     {
-        _http = http;
-        _settings = settings;
-        _logger = logger;
+        var prompt = $"""
+            Break the following idea into a short, ordered list of clear, actionable tasks
+            a single person could check off one by one. Return 4 to 10 tasks.
+            Write the tasks in the same language as the idea.
+
+            Idea: {idea}
+            """;
+        var schema = new
+        {
+            type = "OBJECT",
+            properties = new { tasks = new { type = "ARRAY", items = new { type = "STRING" } } },
+            required = new[] { "tasks" }
+        };
+
+        var result = await _gemini.GenerateJsonAsync<TaskListResult>(prompt, schema, parsed =>
+            parsed.Tasks is { Count: > 0 } ? parsed : throw new InvalidOperationException("Gemini returned an invalid task list."));
+        return new IdeaBreakdownResult(result.Tasks);
     }
 
-    public async Task<List<string>> ListAvailableModelsAsync()
+    public async Task<string> GenerateTitleAsync(string idea)
     {
-        var apiKey = await _settings.GetGeminiApiKeyAsync();
-        if (string.IsNullOrWhiteSpace(apiKey)) return [];
+        var prompt = $"""
+            Give a concise 2 to 3 word title that summarizes this idea, in the same language as the idea.
+            No punctuation besides spaces.
 
-        try
+            Idea: {idea}
+            """;
+        var schema = new
         {
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models?key={Uri.EscapeDataString(apiKey)}";
-            using var response = await _http.GetAsync(url);
-            if (!response.IsSuccessStatusCode) return [];
+            type = "OBJECT",
+            properties = new { title = new { type = "STRING" } },
+            required = new[] { "title" }
+        };
 
-            var result = await response.Content.ReadFromJsonAsync<ModelListResponse>();
-            return result?.Models?
-                .Where(model => model.SupportedGenerationMethods?.Contains("generateContent", StringComparer.OrdinalIgnoreCase) == true)
-                .Select(model => model.Name?.Replace("models/", "", StringComparison.OrdinalIgnoreCase))
-                .Where(name => !string.IsNullOrWhiteSpace(name))
-                .Select(name => name!)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList() ?? [];
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        var result = await _gemini.GenerateJsonAsync<TitleResult>(prompt, schema, parsed =>
+            string.IsNullOrWhiteSpace(parsed.Title) ? throw new InvalidOperationException("Gemini returned an empty title.") : parsed);
+        return result.Title.Trim();
+    }
+
+    public async Task<List<List<string>>> PlanDaysAsync(string idea, int dayCount)
+    {
+        var prompt = $"""
+            Plan the following idea across exactly {dayCount} consecutive days. Order the work so earlier
+            days lay the groundwork for later ones. Give 1 to 5 small, clear, actionable tasks per day;
+            a day may be empty only if truly needed. Return exactly {dayCount} days.
+            Write the tasks in the same language as the idea.
+
+            Idea: {idea}
+            """;
+        var schema = new
         {
-            _logger.LogWarning(ex, "Unable to retrieve available Gemini models.");
-            return [];
-        }
+            type = "OBJECT",
+            properties = new
+            {
+                days = new
+                {
+                    type = "ARRAY",
+                    items = new
+                    {
+                        type = "OBJECT",
+                        properties = new { tasks = new { type = "ARRAY", items = new { type = "STRING" } } },
+                        required = new[] { "tasks" }
+                    }
+                }
+            },
+            required = new[] { "days" }
+        };
+
+        var parsed = await _gemini.GenerateJsonAsync<DayPlanResult>(prompt, schema, result =>
+            result.Days?.Any(day => day.Tasks.Any(task => !string.IsNullOrWhiteSpace(task))) == true
+                ? result
+                : throw new InvalidOperationException("Gemini returned an empty plan."));
+
+        var days = parsed.Days!.Select(day => day.Tasks.Where(task => !string.IsNullOrWhiteSpace(task)).ToList()).ToList();
+        return days.Count == dayCount ? days : SplitEvenly(days.SelectMany(day => day).ToList(), dayCount);
     }
 
     /// <summary>
-    /// Continues the planning conversation. The assistant either asks/answers (empty task list)
-    /// or proposes dated tasks for the user to review; it never adds anything itself.
+    /// The chat assistant: the user describes what they want done and when, in their own words
+    /// ("prepare for the exam on Friday", "clean the flat tomorrow"). The model picks the days.
     /// </summary>
-    public async Task<AssistantReply> ChatAsync(IReadOnlyList<ChatTurn> history, string existingPlan)
-    {
-        var apiKey = await _settings.GetGeminiApiKeyAsync();
-        if (string.IsNullOrWhiteSpace(apiKey))
-            throw new InvalidOperationException("No Gemini API key set. Add one in Settings.");
-
-        Exception? lastError = null;
-        foreach (var model in await GetModelsToTryAsync())
-        {
-            try
-            {
-                return await ChatCoreAsync(history, existingPlan, model, apiKey);
-            }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException)
-            {
-                lastError = ex;
-                _logger.LogWarning(ex, "Gemini model {Model} failed to reply; trying the next fallback.", model);
-            }
-        }
-
-        throw new InvalidOperationException(
-            "The assistant couldn't reply. Check your API key, model access, and connection.",
-            lastError);
-    }
-
-    private async Task<IEnumerable<string>> GetModelsToTryAsync()
-    {
-        var selectedModel = await _settings.GetGeminiModelAsync();
-        var availableModels = await ListAvailableModelsAsync();
-        var knownFallbacks = availableModels.Count == 0
-            ? FallbackModels
-            : FallbackModels.Where(model => availableModels.Contains(model, StringComparer.OrdinalIgnoreCase));
-        return new[] { selectedModel }.Concat(knownFallbacks).Distinct(StringComparer.OrdinalIgnoreCase);
-    }
-
-    private async Task<AssistantReply> ChatCoreAsync(IReadOnlyList<ChatTurn> history, string existingPlan, string model, string apiKey)
+    public async Task<ChatPlan> PlanFromChatAsync(string request)
     {
         var today = DateTime.Today;
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(model)}:generateContent?key={Uri.EscapeDataString(apiKey)}";
-        var system = $"""
-            You are the planning assistant inside NxtTask, a to-do app. Today is {today.ToString("dddd yyyy-MM-dd", CultureInfo.InvariantCulture)}.
-            The user tells you what they have going on. Have a short, friendly conversation before suggesting anything:
-            ask one or two brief questions when something important is unclear (deadlines, how much time they have,
-            which days are busy). Don't ask about things you can reasonably assume, and don't drag it out.
+        var prompt = $"""
+            Today's date is {today:yyyy-MM-dd} ({today.DayOfWeek}). The user describes something they want to get done.
+            Turn it into a plan of small, clear, actionable tasks spread over the right days.
+            - Resolve relative dates ("tomorrow", "Friday", "next week", "by the 20th") against today and return
+              explicit ISO dates (yyyy-MM-dd). If no timing is given, put everything on today.
+            - Never use a date before today or more than {MaxPlanDays} days ahead.
+            - 1 to 6 tasks per day, ordered so earlier days lay the groundwork for later ones.
+            - "title": a 2 to 3 word name for the whole plan.
+            Write the title and tasks in the same language as the user's message.
 
-            When you understand enough, or the user asks for suggestions, propose concrete, small, actionable tasks in
-            "tasks", each with a date (yyyy-MM-dd) from {today:yyyy-MM-dd} to {today.AddDays(6):yyyy-MM-dd}. Only go later,
-            up to {today.AddDays(MaxDaysAhead):yyyy-MM-dd}, if the user mentions a later deadline. Use the existing plan below
-            to balance the load and don't duplicate tasks that are already planned. When several tasks serve one larger
-            goal spread over different days, set "project" to a 2-3 word name for that goal; otherwise leave it empty.
-
-            While you are still discussing, return an empty "tasks" list. The user reviews any proposal and picks what to
-            add; nothing is added without their confirmation. If they ask for changes, return the full revised proposal.
-            Keep "reply" short (a few sentences), conversational, and in the same language the user writes in.
-            Don't repeat the task list inside "reply"; the app shows it separately.
-
-            Existing plan:
-            {existingPlan}
+            User message: {request}
             """;
-
-        var body = new
+        var schema = new
         {
-            system_instruction = new { parts = new[] { new { text = system } } },
-            contents = history.Select(turn => new
+            type = "OBJECT",
+            properties = new
             {
-                role = turn.FromUser ? "user" : "model",
-                parts = new[] { new { text = turn.Text } }
-            }).ToArray(),
-            generationConfig = new
-            {
-                response_mime_type = "application/json",
-                response_schema = new
+                title = new { type = "STRING" },
+                days = new
                 {
-                    type = "OBJECT",
-                    properties = new
+                    type = "ARRAY",
+                    items = new
                     {
-                        reply = new { type = "STRING" },
-                        tasks = new
+                        type = "OBJECT",
+                        properties = new
                         {
-                            type = "ARRAY",
-                            items = new
-                            {
-                                type = "OBJECT",
-                                properties = new
-                                {
-                                    title = new { type = "STRING" },
-                                    date = new { type = "STRING" },
-                                    project = new { type = "STRING" }
-                                },
-                                required = new[] { "title", "date" }
-                            }
-                        }
-                    },
-                    required = new[] { "reply", "tasks" }
+                            date = new { type = "STRING" },
+                            tasks = new { type = "ARRAY", items = new { type = "STRING" } }
+                        },
+                        required = new[] { "date", "tasks" }
+                    }
                 }
-            }
+            },
+            required = new[] { "title", "days" }
         };
 
-        using var response = await _http.PostAsJsonAsync(url, body);
-        response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<GeminiResponse>();
-        var text = result?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text
-            ?? throw new InvalidOperationException("Gemini returned no content.");
-        var parsed = JsonSerializer.Deserialize<ChatResult>(text)
-            ?? throw new InvalidOperationException("Gemini returned an invalid reply.");
-        if (string.IsNullOrWhiteSpace(parsed.Reply) && parsed.Tasks is not { Count: > 0 })
-            throw new InvalidOperationException("Gemini returned an empty reply.");
-
-        var tasks = new List<ProposedTask>();
-        foreach (var task in parsed.Tasks ?? [])
+        ChatPlan? plan = null;
+        await _gemini.GenerateJsonAsync<ChatPlanResult>(prompt, schema, result =>
         {
-            if (string.IsNullOrWhiteSpace(task.Title)) continue;
-            if (!DateTime.TryParseExact(task.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
-                date = today;
-            if (date < today) date = today;
-            if (date > today.AddDays(MaxDaysAhead)) date = today.AddDays(MaxDaysAhead);
-            tasks.Add(new ProposedTask(task.Title.Trim(), date, string.IsNullOrWhiteSpace(task.Project) ? null : task.Project.Trim()));
-        }
-
-        return new AssistantReply(parsed.Reply?.Trim() ?? "", tasks.OrderBy(task => task.Date).ToList(), text);
+            var days = (result.Days ?? [])
+                .Select(day => (Ok: DateTime.TryParse(day.Date, out var date), Date: date.Date,
+                    Tasks: day.Tasks.Select(t => t.Trim()).Where(t => t.Length > 0).ToList()))
+                .Where(day => day.Ok && day.Tasks.Count > 0 && day.Date >= today && day.Date <= today.AddDays(MaxPlanDays))
+                .GroupBy(day => day.Date)
+                .OrderBy(group => group.Key)
+                .Select(group => new PlannedDay(group.Key, group.SelectMany(day => day.Tasks).ToList()))
+                .ToList();
+            if (days.Count == 0) throw new InvalidOperationException("Gemini couldn't turn that into tasks. Try adding a little more detail.");
+            plan = new ChatPlan(string.IsNullOrWhiteSpace(result.Title) ? null : result.Title.Trim(), days);
+            return result;
+        });
+        return plan!;
     }
 
-    private sealed class ModelListResponse { [JsonPropertyName("models")] public List<GeminiModel>? Models { get; set; } }
-    private sealed class GeminiModel
+    private static List<List<string>> SplitEvenly(List<string> tasks, int dayCount)
     {
-        [JsonPropertyName("name")] public string? Name { get; set; }
-        [JsonPropertyName("supportedGenerationMethods")] public List<string>? SupportedGenerationMethods { get; set; }
+        var perDay = (int)Math.Ceiling(tasks.Count / (double)dayCount);
+        return Enumerable.Range(0, dayCount)
+            .Select(index => tasks.Skip(index * perDay).Take(perDay).ToList())
+            .ToList();
     }
-    private sealed class ChatResult
-    {
-        [JsonPropertyName("reply")] public string? Reply { get; set; }
-        [JsonPropertyName("tasks")] public List<ChatTask>? Tasks { get; set; }
-    }
-    private sealed class ChatTask
+
+    private sealed class TaskListResult { [JsonPropertyName("tasks")] public List<string> Tasks { get; set; } = []; }
+    private sealed class DayPlanResult { [JsonPropertyName("days")] public List<DayPlan>? Days { get; set; } }
+    private sealed class DayPlan { [JsonPropertyName("tasks")] public List<string> Tasks { get; set; } = []; }
+    private sealed class TitleResult { [JsonPropertyName("title")] public string Title { get; set; } = ""; }
+    private sealed class ChatPlanResult
     {
         [JsonPropertyName("title")] public string? Title { get; set; }
-        [JsonPropertyName("date")] public string? Date { get; set; }
-        [JsonPropertyName("project")] public string? Project { get; set; }
+        [JsonPropertyName("days")] public List<ChatDay>? Days { get; set; }
     }
-    private sealed class GeminiResponse { [JsonPropertyName("candidates")] public List<Candidate>? Candidates { get; set; } }
-    private sealed class Candidate { [JsonPropertyName("content")] public Content? Content { get; set; } }
-    private sealed class Content { [JsonPropertyName("parts")] public List<Part>? Parts { get; set; } }
-    private sealed class Part { [JsonPropertyName("text")] public string? Text { get; set; } }
+    private sealed class ChatDay
+    {
+        [JsonPropertyName("date")] public string Date { get; set; } = "";
+        [JsonPropertyName("tasks")] public List<string> Tasks { get; set; } = [];
+    }
 }

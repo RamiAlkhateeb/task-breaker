@@ -1,116 +1,29 @@
 @page "/settings"
 @using IdeaSplit.Shared.Services
 @inject SettingsService SettingsService
-@inject GeminiService Gemini
-@inject NavigationManager Nav
+@inject ToastService Toasts
 
-<div class="page-container settings-page">
-    <button class="btn btn-link icon-button back-button" title="Back" aria-label="Back" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left"></i></button>
-    <h1>Settings</h1>
+<PageTitle>Settings · NxtTask</PageTitle>
 
-    <label class="form-label" for="api-key">Gemini API key</label>
-    <input id="api-key" type="password" class="form-control" @bind="apiKey" placeholder="AIza..." />
-    <p class="form-hint">
-        Stored locally on this device. Get a free key at
-        <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a>.
-    </p>
-
-    <label class="form-label" for="speech-language">Dictation language</label>
-    <select id="speech-language" class="form-select" @bind="speechLanguage">
-        <option value="en-US">English</option>
-        <option value="ar-SA">العربية</option>
-    </select>
-    <p class="form-hint">Used by the microphone in the plan box.</p>
-
-    <div class="model-heading">
-        <label class="form-label mb-0" for="model">Model</label>
-        <button class="btn btn-outline-secondary icon-button" title="Refresh models" aria-label="Refresh models" disabled="@isLoadingModels" @onclick="RefreshModels"><i class="bi bi-arrow-clockwise"></i></button>
-    </div>
-    @if (isLoadingModels)
-    {
-        <p class="form-hint">Loading available models...</p>
-    }
-    <select id="model" class="form-select" @bind="selectedModel">
-        @if (!availableModels.Contains(selectedModel, StringComparer.OrdinalIgnoreCase))
-        {
-            <option value="@selectedModel">@selectedModel (manual / unavailable)</option>
-        }
-        @foreach (var model in availableModels)
-        {
-            <option value="@model">@model</option>
-        }
-    </select>
-    @if (!isLoadingModels && availableModels.Count == 0 && !string.IsNullOrWhiteSpace(apiKey))
-    {
-        <p class="form-hint">No models could be loaded. You can keep using the saved model or refresh after checking your key.</p>
-    }
-
-    @if (saved)
-    {
-        <div class="alert alert-success">Settings saved.</div>
-    }
-
-    <button class="btn btn-primary icon-button" title="Save" aria-label="Save" @onclick="Save"><i class="bi bi-check-lg"></i></button>
-
-    <section class="about-section" aria-labelledby="about-heading">
-        <h2 id="about-heading">About IdeaSplit</h2>
-        <p>Turn ideas into clear, manageable tasks.</p>
-        <div class="team-member">
-            <span class="team-avatar" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
-            <div>
-                <strong>Rami Alkhateeb</strong>
-                <span>Developer</span>
-            </div>
-        </div>
-    </section>
-</div>
+@* The family settings shell (appearance, AI, install, about) with NxtTask's dictation setting first. *@
+<NxtSettingsPage BackHref="/">
+    <AppSections>
+        <NxtSettingsSection Icon="🎙️" Title="Dictation" Description="The language the microphone listens for in the plan box and the assistant.">
+            <NxtSegmented TValue="string" Label="Dictation language" Value="@speechLanguage" ValueChanged="SaveSpeechLanguageAsync"
+                          Options="@([("en-US", "English"), ("ar-SA", "العربية")])" />
+        </NxtSettingsSection>
+    </AppSections>
+</NxtSettingsPage>
 
 @code {
-    private string apiKey = "";
-    private string selectedModel = SettingsService.DefaultGeminiModel;
     private string speechLanguage = SettingsService.DefaultSpeechLanguage;
-    private List<string> availableModels = [];
-    private bool isLoadingModels;
-    private bool saved;
 
-    protected override async Task OnInitializedAsync()
-    {
-        apiKey = await SettingsService.GetGeminiApiKeyAsync() ?? "";
-        selectedModel = await SettingsService.GetGeminiModelAsync();
-        speechLanguage = await SettingsService.GetSpeechLanguageAsync();
-        if (!string.IsNullOrWhiteSpace(apiKey))
-        {
-            await RefreshModels();
-            if (selectedModel == SettingsService.DefaultGeminiModel && availableModels.Count > 0)
-            {
-                selectedModel = availableModels.FirstOrDefault(model =>
-                    string.Equals(model, "gemini-3.5-flash-lite", StringComparison.OrdinalIgnoreCase))
-                    ?? availableModels.FirstOrDefault()
-                    ?? SettingsService.DefaultGeminiModel;
-                await PersistModelAsync();
-            }
-        }
-    }
+    protected override async Task OnInitializedAsync() => speechLanguage = await SettingsService.GetSpeechLanguageAsync();
 
-    private async Task Save()
+    private async Task SaveSpeechLanguageAsync(string value)
     {
-        await SettingsService.SaveGeminiApiKeyAsync(apiKey);
-        await SettingsService.SaveSpeechLanguageAsync(speechLanguage);
-        await PersistModelAsync();
-        saved = true;
-        if (!string.IsNullOrWhiteSpace(apiKey)) await RefreshModels();
-        Nav.NavigateTo("/");
-    }
-
-    private async Task RefreshModels()
-    {
-        isLoadingModels = true;
-        try { availableModels = await Gemini.ListAvailableModelsAsync(); }
-        finally { isLoadingModels = false; }
-    }
-
-    private async Task PersistModelAsync()
-    {
-        await SettingsService.SaveGeminiModelAsync(selectedModel);
+        speechLanguage = value;
+        await SettingsService.SaveSpeechLanguageAsync(value);
+        Toasts.Show("Dictation language saved.");
     }
 }
