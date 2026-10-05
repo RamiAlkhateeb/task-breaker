@@ -1,3 +1,5 @@
+@using System.Globalization
+@using System.Text
 @using IdeaSplit.Shared.Data
 @using IdeaSplit.Shared.Models
 @using IdeaSplit.Shared.Services
@@ -7,15 +9,96 @@
 @inject SettingsService Settings
 @inject IJSRuntime JS
 
+@if (chatOpen)
+{
+    <section class="chat-panel" aria-label="Planning assistant">
+        <header class="chat-header">
+            <span class="chat-title"><i class="bi bi-stars" aria-hidden="true"></i> Assistant</span>
+            <button type="button" class="chat-icon-btn" title="New chat" aria-label="New chat" disabled="@isThinking" @onclick="NewChat"><i class="bi bi-arrow-counterclockwise"></i></button>
+            <button type="button" class="chat-icon-btn" title="Hide chat" aria-label="Hide chat" @onclick="() => chatOpen = false"><i class="bi bi-chevron-down"></i></button>
+        </header>
+
+        <div class="chat-messages" aria-live="polite">
+            @if (isThinking)
+            {
+                <div class="chat-row">
+                    <div class="chat-bubble is-typing" aria-label="Assistant is typing"><span></span><span></span><span></span></div>
+                </div>
+            }
+
+            @foreach (var message in Enumerable.Reverse(messages))
+            {
+                <div class="chat-row @(message.FromUser ? "is-user" : "")" @key="message">
+                    @if (message.IsNote)
+                    {
+                        <div class="chat-note"><i class="bi bi-check2-circle" aria-hidden="true"></i> @message.Text</div>
+                    }
+                    else
+                    {
+                        <div class="chat-bubble @(message.FromUser ? "is-user" : "") @(message.IsError ? "is-error" : "")" dir="auto">@message.Text</div>
+                    }
+
+                    @if (message.Proposal.Count > 0)
+                    {
+                        <div class="proposal-card">
+                            @foreach (var day in message.Proposal.GroupBy(item => item.Task.Date.Date).OrderBy(group => group.Key))
+                            {
+                                <div class="proposal-day">@DayLabel(day.Key)</div>
+                                @foreach (var item in day)
+                                {
+                                    <label class="task-row proposal-item">
+                                        <input type="checkbox" checked="@item.Selected" disabled="@message.Added"
+                                               @onchange="() => item.Selected = !item.Selected" />
+                                        <span class="task-main">
+                                            <span class="task-title" dir="auto">@item.Task.Title</span>
+                                            @if (!string.IsNullOrWhiteSpace(item.Task.ProjectName))
+                                            {
+                                                <span class="task-project">@item.Task.ProjectName</span>
+                                            }
+                                        </span>
+                                    </label>
+                                }
+                            }
+
+                            @if (message.Added)
+                            {
+                                <div class="proposal-added"><i class="bi bi-check2-circle" aria-hidden="true"></i> Added to your plan</div>
+                            }
+                            else
+                            {
+                                var selected = message.Proposal.Count(item => item.Selected);
+                                <button type="button" class="btn btn-primary proposal-add" disabled="@(adding || selected == 0)" @onclick="() => AddProposal(message)">
+                                    @(selected == 1 ? "Add 1 task to plan" : $"Add {selected} tasks to plan")
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (messages.Count == 0 && !isThinking)
+            {
+                <p class="chat-empty">Tell me what you have going on this week. I'll ask a question or two, then suggest tasks you can add.</p>
+            }
+        </div>
+    </section>
+}
+
 @if (!string.IsNullOrEmpty(status))
 {
     <div class="composer-status" role="status">@status</div>
 }
 
 <div class="composer">
+    @if (!chatOpen && messages.Count > 0)
+    {
+        <button type="button" class="composer-icon-btn" title="Show chat" aria-label="Show chat" @onclick="() => chatOpen = true">
+            <i class="bi bi-chat-dots"></i>
+        </button>
+    }
     <textarea class="composer-input" dir="auto" rows="@Rows" @bind="text" @bind:event="oninput"
-              placeholder="@(listening ? "Listening..." : "Describe your plan...")"
-              aria-label="Describe your plan"></textarea>
+              placeholder="@(listening ? "Listening..." : "What's on your plate?")"
+              aria-label="Message the planning assistant"></textarea>
     @if (speechSupported)
     {
         <button type="button" class="composer-icon-btn @(listening ? "is-listening" : "")" title="@(listening ? "Stop recording" : "Dictate")"
@@ -23,97 +106,46 @@
             <i class="bi @(listening ? "bi-stop-fill" : "bi-mic")"></i>
         </button>
     }
-    <button type="button" class="composer-send-btn" title="Submit" aria-label="Submit"
-            disabled="@(string.IsNullOrWhiteSpace(text))" @onclick="Submit">
+    <button type="button" class="composer-send-btn" title="Send" aria-label="Send"
+            disabled="@(string.IsNullOrWhiteSpace(text) || isThinking)" @onclick="Send">
         <i class="bi bi-arrow-up"></i>
     </button>
 </div>
 
-@if (showSheet)
-{
-    <div class="composer-backdrop" @onclick="CloseSheet">
-        <div class="composer-sheet" role="dialog" aria-label="When is this plan for?" @onclick:stopPropagation="true">
-            <h2>When is this plan for?</h2>
-
-            <div class="schedule-type-toggle" role="radiogroup" aria-label="Plan length">
-                <button type="button" class="schedule-type-btn @(planType == TaskScheduleType.DayWeek ? "active" : "")"
-                        aria-pressed="@(planType == TaskScheduleType.DayWeek)" @onclick="() => SetPlanType(TaskScheduleType.DayWeek)">
-                    <i class="bi bi-calendar3" aria-hidden="true"></i> One day
-                </button>
-                <button type="button" class="schedule-type-btn @(planType == TaskScheduleType.ProjectDeadline ? "active" : "")"
-                        aria-pressed="@(planType == TaskScheduleType.ProjectDeadline)" @onclick="() => SetPlanType(TaskScheduleType.ProjectDeadline)">
-                    <i class="bi bi-flag" aria-hidden="true"></i> Multiple days
-                </button>
-            </div>
-
-            <label class="form-label mt-3" for="plan-date">@(planType == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")</label>
-            <div class="quick-dates">
-                @if (planType == TaskScheduleType.DayWeek)
-                {
-                    <button type="button" class="quick-date-chip @(IsQuick(0) ? "active" : "")" @onclick="() => planDate = DateTime.Today">Today</button>
-                    <button type="button" class="quick-date-chip @(IsQuick(1) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(1)">Tomorrow</button>
-                }
-                else
-                {
-                    <button type="button" class="quick-date-chip @(IsQuick(3) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(3)">In 3 days</button>
-                    <button type="button" class="quick-date-chip @(IsQuick(7) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(7)">In a week</button>
-                    <button type="button" class="quick-date-chip @(IsQuick(14) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(14)">In 2 weeks</button>
-                }
-            </div>
-            <input id="plan-date" type="date" class="form-control" @bind="planDate"
-                   min="@MinDate.ToString("yyyy-MM-dd")" max="@MaxDateAttribute" />
-
-            @if (planType == TaskScheduleType.ProjectDeadline)
-            {
-                <p class="form-hint">One project per day from today to the deadline (up to @MaxDeadlineDays days), with your tasks spread across them.</p>
-            }
-
-            @if (!string.IsNullOrEmpty(error))
-            {
-                <div class="alert alert-danger mt-3">@error</div>
-            }
-
-            <div class="composer-sheet-actions">
-                <button type="button" class="btn btn-outline-secondary" disabled="@isWorking" @onclick="CloseSheet">Cancel</button>
-                <button type="button" class="btn btn-primary" disabled="@isWorking" @onclick="Create">
-                    @if (isWorking)
-                    {
-                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Planning...</span>
-                    }
-                    else
-                    {
-                        <span>Create</span>
-                    }
-                </button>
-            </div>
-        </div>
-    </div>
-}
-
 @code {
-    private const int MaxDeadlineDays = 30;
+    private const int PlanContextDays = 30;
 
     [Parameter] public EventCallback OnCreated { get; set; }
 
+    private sealed class ChatMessage
+    {
+        public bool FromUser { get; init; }
+        public string Text { get; init; } = "";
+        public string Raw { get; init; } = "";
+        public bool IsError { get; init; }
+        public bool IsNote { get; init; }
+        public List<ProposalItem> Proposal { get; init; } = [];
+        public bool Added { get; set; }
+    }
+
+    private sealed class ProposalItem
+    {
+        public required ProposedTask Task { get; init; }
+        public bool Selected { get; set; } = true;
+    }
+
+    private readonly List<ChatMessage> messages = [];
     private DotNetObjectReference<PlanComposer>? selfRef;
     private string text = "";
     private string baseText = "";
     private string? status;
-    private string? error;
     private bool speechSupported;
     private bool listening;
-    private bool showSheet;
-    private bool isWorking;
-    private TaskScheduleType planType = TaskScheduleType.DayWeek;
-    private DateTime? planDate = DateTime.Today;
+    private bool chatOpen;
+    private bool isThinking;
+    private bool adding;
 
     private int Rows => Math.Clamp(text.Split('\n').Length, 1, 5);
-    private DateTime MinDate => planType == TaskScheduleType.ProjectDeadline ? DateTime.Today.AddDays(1) : DateTime.Today;
-    private string? MaxDateAttribute => planType == TaskScheduleType.ProjectDeadline
-        ? DateTime.Today.AddDays(MaxDeadlineDays).ToString("yyyy-MM-dd")
-        : null;
-
-    private bool IsQuick(int days) => planDate?.Date == DateTime.Today.AddDays(days);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -122,6 +154,123 @@
         speechSupported = await JS.InvokeAsync<bool>("ideaSplitSpeech.isSupported");
         if (speechSupported) StateHasChanged();
     }
+
+    private async Task Send()
+    {
+        var message = text.Trim();
+        if (message.Length == 0 || isThinking) return;
+        if (listening) await JS.InvokeVoidAsync("ideaSplitSpeech.stop");
+
+        status = null;
+        chatOpen = true;
+        var userMessage = new ChatMessage { FromUser = true, Text = message };
+        messages.Add(userMessage);
+        text = "";
+        isThinking = true;
+
+        try
+        {
+            var history = messages
+                .Where(m => !m.IsNote && !m.IsError)
+                .Select(m => new ChatTurn(m.FromUser, m.FromUser ? m.Text : m.Raw))
+                .ToList();
+            var reply = await Gemini.ChatAsync(history, await BuildPlanContextAsync());
+            messages.Add(new ChatMessage
+            {
+                Text = string.IsNullOrWhiteSpace(reply.Reply) ? "Here's what I'd suggest:" : reply.Reply,
+                Raw = reply.RawJson,
+                Proposal = reply.Tasks.Select(task => new ProposalItem { Task = task }).ToList()
+            });
+        }
+        catch (Exception ex)
+        {
+            messages.Remove(userMessage);
+            if (string.IsNullOrWhiteSpace(text)) text = message;
+            messages.Add(new ChatMessage { IsError = true, Text = ex.Message });
+        }
+        finally
+        {
+            isThinking = false;
+        }
+    }
+
+    private void NewChat()
+    {
+        messages.Clear();
+        status = null;
+    }
+
+    private async Task AddProposal(ChatMessage message)
+    {
+        var chosen = message.Proposal.Where(item => item.Selected).Select(item => item.Task).ToList();
+        if (chosen.Count == 0 || adding) return;
+
+        adding = true;
+        try
+        {
+            foreach (var day in chosen.GroupBy(task => task.Date.Date).OrderBy(group => group.Key))
+                await AddTasksToDayAsync(day.Key, day.ToList());
+
+            message.Added = true;
+            var dayCount = chosen.Select(task => task.Date.Date).Distinct().Count();
+            messages.Add(new ChatMessage
+            {
+                IsNote = true,
+                Text = $"Added {chosen.Count} {(chosen.Count == 1 ? "task" : "tasks")} to {dayCount} {(dayCount == 1 ? "day" : "days")}."
+            });
+            await OnCreated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            messages.Add(new ChatMessage { IsError = true, Text = ex.Message });
+        }
+        finally
+        {
+            adding = false;
+        }
+    }
+
+    private async Task AddTasksToDayAsync(DateTime date, List<ProposedTask> tasks)
+    {
+        var day = await ProjectStore.GetOrCreateDayProjectAsync(date);
+        var next = day.Tasks.Count(task => task.ParentTaskId is null);
+        foreach (var task in tasks)
+            day.Tasks.Add(new TaskItem { Title = task.Title, ProjectName = task.ProjectName, SortOrder = next++ });
+        day.IsArchived = false;
+        await ProjectStore.SaveProjectAsync(day);
+    }
+
+    private async Task<string> BuildPlanContextAsync()
+    {
+        var today = DateTime.Today;
+        var days = (await ProjectStore.GetProjectsAsync())
+            .Where(project => project.ScheduleType == TaskScheduleType.DayWeek && project.ScheduleDate is not null)
+            .ToList();
+
+        var plan = new StringBuilder();
+        for (var offset = 0; offset <= PlanContextDays; offset++)
+        {
+            var date = today.AddDays(offset);
+            var open = days
+                .Where(project => project.ScheduleDate!.Value.Date == date)
+                .SelectMany(project => project.Tasks)
+                .Where(task => task.ParentTaskId is null && !task.IsDone)
+                .Select(task => string.IsNullOrWhiteSpace(task.ProjectName) ? task.Title : $"{task.Title} [{task.ProjectName}]")
+                .ToList();
+
+            if (open.Count == 0 && offset > 6) continue;
+            plan.Append(date.ToString("ddd yyyy-MM-dd", CultureInfo.InvariantCulture)).Append(": ")
+                .AppendLine(open.Count == 0 ? "nothing planned" : string.Join("; ", open));
+        }
+        return plan.ToString();
+    }
+
+    private static string DayLabel(DateTime date) => (date - DateTime.Today).Days switch
+    {
+        0 => "Today",
+        1 => "Tomorrow",
+        _ => date.ToString("dddd, MMM d")
+    };
 
     private async Task ToggleMic()
     {
@@ -160,113 +309,6 @@
     {
         listening = false;
         return InvokeAsync(StateHasChanged);
-    }
-
-    private async Task Submit()
-    {
-        if (string.IsNullOrWhiteSpace(text)) return;
-        if (listening) await JS.InvokeVoidAsync("ideaSplitSpeech.stop");
-        status = null;
-        error = null;
-        planType = TaskScheduleType.DayWeek;
-        planDate = DateTime.Today;
-        showSheet = true;
-    }
-
-    private void CloseSheet()
-    {
-        if (!isWorking) showSheet = false;
-    }
-
-    private void SetPlanType(TaskScheduleType type)
-    {
-        planType = type;
-        planDate = type == TaskScheduleType.ProjectDeadline ? DateTime.Today.AddDays(7) : DateTime.Today;
-        error = null;
-    }
-
-    private string? Validate()
-    {
-        if (planDate is null) return "Pick a date.";
-        var date = planDate.Value.Date;
-        if (planType == TaskScheduleType.DayWeek)
-            return date < DateTime.Today ? "Pick today or a future date." : null;
-
-        var days = (date - DateTime.Today).Days;
-        return days is >= 1 and <= MaxDeadlineDays ? null : $"Pick a deadline between tomorrow and {MaxDeadlineDays} days from now.";
-    }
-
-    private async Task Create()
-    {
-        error = Validate();
-        if (error is not null) return;
-
-        isWorking = true;
-        var idea = text.Trim();
-        try
-        {
-            var touched = 0;
-
-            if (planType == TaskScheduleType.DayWeek)
-            {
-                var breakdown = await Gemini.BreakDownIdeaAsync(idea);
-                await AddTasksToDayAsync(planDate!.Value.Date, breakdown.Tasks, null);
-                touched = 1;
-            }
-            else
-            {
-                var start = DateTime.Today;
-                var dayCount = (planDate!.Value.Date - start).Days + 1;
-                var titleTask = GenerateTitleSafeAsync(idea);
-                var planTask = Gemini.PlanDaysAsync(idea, dayCount);
-                await Task.WhenAll(planTask, titleTask);
-
-                var plan = planTask.Result;
-                for (var index = 0; index < Math.Min(dayCount, plan.Count); index++)
-                {
-                    if (plan[index].Count == 0) continue;
-                    await AddTasksToDayAsync(start.AddDays(index), plan[index], titleTask.Result);
-                    touched++;
-                }
-            }
-
-            showSheet = false;
-            text = "";
-            status = touched == 1 ? "Added tasks to 1 day." : $"Added tasks to {touched} days.";
-            await OnCreated.InvokeAsync();
-        }
-        catch (Exception ex)
-        {
-            error = ex.Message;
-        }
-        finally
-        {
-            isWorking = false;
-        }
-    }
-
-    private async Task AddTasksToDayAsync(DateTime date, List<string> tasks, string? projectName)
-    {
-        var day = await ProjectStore.GetOrCreateDayProjectAsync(date);
-        var next = day.Tasks.Count(task => task.ParentTaskId is null);
-        foreach (var title in tasks)
-        {
-            day.Tasks.Add(new TaskItem { Title = title, ProjectName = projectName, SortOrder = next++ });
-        }
-        day.IsArchived = false;
-        await ProjectStore.SaveProjectAsync(day);
-    }
-
-    private async Task<string> GenerateTitleSafeAsync(string idea)
-    {
-        try
-        {
-            return await Gemini.GenerateTitleAsync(idea);
-        }
-        catch (Exception)
-        {
-            return idea.Length > 40 ? idea[..40] + "..." : idea;
-        }
     }
 
     public async ValueTask DisposeAsync()
