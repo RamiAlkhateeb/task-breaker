@@ -22,7 +22,7 @@ builder.Services.AddSingleton<INxtLocale>(new FixedLocale(FixedLocale.English));
 builder.Services.AddNxtUi(o =>
 {
     o.App = NxtAppId.NxtTask;
-    o.LogoUrl = "icons/logo.svg";
+    o.LogoUrl = "icons/logo.png";
     o.Description = new()
     {
         ["en"] = "Turn ideas into clear, manageable tasks, planned across your days.",
