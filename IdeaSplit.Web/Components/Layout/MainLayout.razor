@@ -1,7 +1,18 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject INxtLocale Locale
 
-<div class="app-shell">
+@* Keyed by language so every page is rebuilt with the new strings when the language changes. *@
+<div class="app-shell" dir="@Locale.Direction" lang="@Locale.Language" @key="Locale.Language">
     @Body
 </div>
 <NxtToastHost />
 <NxtVersionBanner />
+
+@code {
+    protected override void OnInitialized() => Locale.Changed += OnLanguageChanged;
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Locale.Changed -= OnLanguageChanged;
+}

@@ -2,7 +2,7 @@
 
 @if (Date is not null)
 {
-    <span class="task-due-badge @StateClass" title="@(Type == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")">
+    <span class="task-due-badge @StateClass" title="@(Type == TaskScheduleType.ProjectDeadline ? T["deadline"] : T["date"])">
         <i class="bi @(Type == TaskScheduleType.ProjectDeadline ? "bi-flag" : "bi-calendar3")" aria-hidden="true"></i>
         @Label
     </span>
@@ -22,9 +22,9 @@
 
     private string Label => DaysAway switch
     {
-        0 => "Today",
-        1 => "Tomorrow",
-        < 0 when !Muted => $"Overdue · {Date!.Value:MMM d}",
-        _ => Date!.Value.ToString("MMM d")
+        0 => T["today"],
+        1 => T["tomorrow"],
+        < 0 when !Muted => T.F("overdue", T.ShortDate(Date!.Value)),
+        _ => T.ShortDate(Date!.Value)
     };
 }

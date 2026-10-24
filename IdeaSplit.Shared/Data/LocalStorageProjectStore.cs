@@ -80,7 +80,7 @@ public class LocalStorageProjectStore : IProjectStore
 
         var created = new Project
         {
-            Title = date.ToString("dddd, MMM d"),
+            Title = date.ToString("dddd, MMM d", System.Globalization.CultureInfo.InvariantCulture),
             ScheduleType = TaskScheduleType.DayWeek,
             ScheduleDate = date.Date
         };

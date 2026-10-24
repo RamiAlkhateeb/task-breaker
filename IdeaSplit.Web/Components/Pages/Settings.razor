@@ -3,13 +3,13 @@
 @inject SettingsService SettingsService
 @inject ToastService Toasts
 
-<PageTitle>Settings · NxtTask</PageTitle>
+<PageTitle>@T["settings"] · NxtTask</PageTitle>
 
 @* The family settings shell (appearance, AI, install, about) with NxtTask's dictation setting first. *@
 <NxtSettingsPage BackHref="/">
     <AppSections>
-        <NxtSettingsSection Icon="🎙️" Title="Dictation" Description="The language the microphone listens for in the plan box and the assistant.">
-            <NxtSegmented TValue="string" Label="Dictation language" Value="@speechLanguage" ValueChanged="SaveSpeechLanguageAsync"
+        <NxtSettingsSection Icon="🎙️" Title="@T["dictation_title"]" Description="@T["dictation_desc"]">
+            <NxtSegmented TValue="string" Label="@T["dictation_label"]" Value="@speechLanguage" ValueChanged="SaveSpeechLanguageAsync"
                           Options="@([("en-US", "English"), ("ar-SA", "العربية")])" />
         </NxtSettingsSection>
     </AppSections>
@@ -24,6 +24,6 @@
     {
         speechLanguage = value;
         await SettingsService.SaveSpeechLanguageAsync(value);
-        Toasts.Show("Dictation language saved.");
+        Toasts.Show(T["dictation_saved"]);
     }
 }

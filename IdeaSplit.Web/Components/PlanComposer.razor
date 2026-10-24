@@ -11,37 +11,37 @@
 }
 
 <NxtComposer @bind-Value="text" OnSubmit="_ => Submit()" CssClass="composer"
-             Placeholder="Describe your plan..." SendLabel="Submit" SpeechLanguage="@speechLanguage" />
+             Placeholder="@T["plan_placeholder"]" SendLabel="@T["submit"]" SpeechLanguage="@speechLanguage" />
 
 @if (showSheet)
 {
     <div class="composer-backdrop" @onclick="CloseSheet">
-        <div class="composer-sheet" role="dialog" aria-label="When is this plan for?" @onclick:stopPropagation="true">
-            <h2>When is this plan for?</h2>
+        <div class="composer-sheet" role="dialog" aria-label="@T["when_title"]" @onclick:stopPropagation="true">
+            <h2>@T["when_title"]</h2>
 
-            <div class="schedule-type-toggle" role="radiogroup" aria-label="Plan length">
+            <div class="schedule-type-toggle" role="radiogroup" aria-label="@T["plan_length"]">
                 <button type="button" class="schedule-type-btn @(planType == TaskScheduleType.DayWeek ? "active" : "")"
                         aria-pressed="@(planType == TaskScheduleType.DayWeek)" @onclick="() => SetPlanType(TaskScheduleType.DayWeek)">
-                    <i class="bi bi-calendar3" aria-hidden="true"></i> One day
+                    <i class="bi bi-calendar3" aria-hidden="true"></i> @T["one_day"]
                 </button>
                 <button type="button" class="schedule-type-btn @(planType == TaskScheduleType.ProjectDeadline ? "active" : "")"
                         aria-pressed="@(planType == TaskScheduleType.ProjectDeadline)" @onclick="() => SetPlanType(TaskScheduleType.ProjectDeadline)">
-                    <i class="bi bi-flag" aria-hidden="true"></i> Multiple days
+                    <i class="bi bi-flag" aria-hidden="true"></i> @T["multiple_days"]
                 </button>
             </div>
 
-            <label class="form-label mt-3" for="plan-date">@(planType == TaskScheduleType.ProjectDeadline ? "Deadline" : "Date")</label>
+            <label class="form-label mt-3" for="plan-date">@(planType == TaskScheduleType.ProjectDeadline ? T["deadline"] : T["date"])</label>
             <div class="quick-dates">
                 @if (planType == TaskScheduleType.DayWeek)
                 {
-                    <button type="button" class="quick-date-chip @(IsQuick(0) ? "active" : "")" @onclick="() => planDate = DateTime.Today">Today</button>
-                    <button type="button" class="quick-date-chip @(IsQuick(1) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(1)">Tomorrow</button>
+                    <button type="button" class="quick-date-chip @(IsQuick(0) ? "active" : "")" @onclick="() => planDate = DateTime.Today">@T["today"]</button>
+                    <button type="button" class="quick-date-chip @(IsQuick(1) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(1)">@T["tomorrow"]</button>
                 }
                 else
                 {
-                    <button type="button" class="quick-date-chip @(IsQuick(3) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(3)">In 3 days</button>
-                    <button type="button" class="quick-date-chip @(IsQuick(7) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(7)">In a week</button>
-                    <button type="button" class="quick-date-chip @(IsQuick(14) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(14)">In 2 weeks</button>
+                    <button type="button" class="quick-date-chip @(IsQuick(3) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(3)">@T["in_3_days"]</button>
+                    <button type="button" class="quick-date-chip @(IsQuick(7) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(7)">@T["in_a_week"]</button>
+                    <button type="button" class="quick-date-chip @(IsQuick(14) ? "active" : "")" @onclick="() => planDate = DateTime.Today.AddDays(14)">@T["in_2_weeks"]</button>
                 }
             </div>
             <input id="plan-date" type="date" class="form-control" @bind="planDate"
@@ -49,7 +49,7 @@
 
             @if (planType == TaskScheduleType.ProjectDeadline)
             {
-                <p class="form-hint">One project per day from today to the deadline (up to @MaxDeadlineDays days), with your tasks spread across them.</p>
+                <p class="form-hint">@T.F("deadline_hint", MaxDeadlineDays)</p>
             }
 
             @if (!string.IsNullOrEmpty(error))
@@ -58,15 +58,15 @@
             }
 
             <div class="composer-sheet-actions">
-                <button type="button" class="btn btn-outline-secondary" disabled="@isWorking" @onclick="CloseSheet">Cancel</button>
+                <button type="button" class="btn btn-outline-secondary" disabled="@isWorking" @onclick="CloseSheet">@T["cancel"]</button>
                 <button type="button" class="btn btn-primary" disabled="@isWorking" @onclick="Create">
                     @if (isWorking)
                     {
-                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Planning...</span>
+                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>@T["planning"]</span>
                     }
                     else
                     {
-                        <span>Create</span>
+                        <span>@T["create"]</span>
                     }
                 </button>
             </div>
@@ -121,13 +121,13 @@
 
     private string? Validate()
     {
-        if (planDate is null) return "Pick a date.";
+        if (planDate is null) return T["pick_date"];
         var date = planDate.Value.Date;
         if (planType == TaskScheduleType.DayWeek)
-            return date < DateTime.Today ? "Pick today or a future date." : null;
+            return date < DateTime.Today ? T["pick_future"] : null;
 
         var days = (date - DateTime.Today).Days;
-        return days is >= 1 and <= MaxDeadlineDays ? null : $"Pick a deadline between tomorrow and {MaxDeadlineDays} days from now.";
+        return days is >= 1 and <= MaxDeadlineDays ? null : T.F("pick_deadline", MaxDeadlineDays);
     }
 
     private async Task Create()
@@ -166,7 +166,7 @@
 
             showSheet = false;
             text = "";
-            status = touched == 1 ? "Added tasks to 1 day." : $"Added tasks to {touched} days.";
+            status = T.F("added_to_days", T.Days(touched));
             await OnCreated.InvokeAsync();
         }
         catch (Exception ex)
