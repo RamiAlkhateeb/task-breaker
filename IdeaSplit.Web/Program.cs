@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Nxt.UI;
 using Nxt.UI.Ai;
+using IdeaSplit.Web.Localization;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -18,7 +19,9 @@ builder.Services.AddScoped(_ => new HttpClient
 {
     BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
 });
-builder.Services.AddSingleton<INxtLocale>(new FixedLocale(FixedLocale.English));
+builder.Services.AddSingleton<AppLocale>();
+builder.Services.AddSingleton<INxtLocale>(sp => sp.GetRequiredService<AppLocale>());
+builder.Services.AddSingleton<AppText>();
 builder.Services.AddNxtUi(o =>
 {
     o.App = NxtAppId.NxtTask;
@@ -36,4 +39,6 @@ builder.Services.AddNxtUi(o =>
     };
 });
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+await host.Services.GetRequiredService<AppLocale>().InitializeAsync();
+await host.RunAsync();

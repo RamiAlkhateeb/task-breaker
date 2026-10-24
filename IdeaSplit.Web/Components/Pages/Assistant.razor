@@ -8,27 +8,22 @@
 @inject IProjectStore ProjectStore
 @inject SettingsService Settings
 
-<PageTitle>Assistant · NxtTask</PageTitle>
+<PageTitle>@T["assistant"] · NxtTask</PageTitle>
 
 @* The family AI assistant (Nxt.UI AiChat). It talks things through first, suggests tasks for the week,
    and only adds them to the user's days after they agree. *@
 <div class="assistant-page">
-    <NxtPageHeader Icon="✨" Title="Assistant" Subtitle="Talk through your week, then add what fits" BackHref="/" />
+    <NxtPageHeader Icon="✨" Title="@T["assistant"]" Subtitle="@T["assistant_subtitle"]" BackHref="/" />
     <AiChat OnSend="HandleSendAsync" ShowMic="true" SpeechLanguage="@speechLanguage"
-            EmptyText="Tell me what you have going on. I'll ask a question or two, suggest tasks for your week, and add them once you say so."
-            Placeholder="What do you have going on?"
+            EmptyText="@T["assistant_empty"]"
+            Placeholder="@T["assistant_placeholder"]"
             Suggestions="@Suggestions" />
 </div>
 
 @code {
     private const int PlanContextDays = 30;
 
-    private static readonly string[] Suggestions =
-    [
-        "I have an exam on Thursday",
-        "Busy week at work, but I want to exercise",
-        "Help me plan this week"
-    ];
+    private string[] Suggestions => [T["suggestion_1"], T["suggestion_2"], T["suggestion_3"]];
 
     private readonly List<AssistantTurn> conversation = [];
     private List<SuggestedTask>? pendingProposal;
@@ -59,13 +54,13 @@
             pendingProposal = null;
 
             var dayCount = tasks.Select(task => task.Date).Distinct().Count();
-            var summary = $"Added {Plural(tasks.Count, "task")} to {Plural(dayCount, "day")}.";
+            var summary = T.F("added_summary", T.Tasks(tasks.Count), T.Days(dayCount));
             conversation.Add(new AssistantTurn(false, $"{result.Reply} [{summary}]".Trim()));
             return new AiReply
             {
                 Text = string.IsNullOrWhiteSpace(result.Reply) ? summary : $"{result.Reply} {summary}",
                 Sections = ToSections(tasks),
-                ActionText = "Open my days",
+                ActionText = T["open_my_days"],
                 ActionHref = "/"
             };
         }
@@ -74,7 +69,7 @@
         {
             pendingProposal = result.Tasks;
             var reply = string.IsNullOrWhiteSpace(result.Reply)
-                ? "Here's what I'd suggest. Want me to add these to your plan?"
+                ? T["suggest_default"]
                 : result.Reply;
             conversation.Add(new AssistantTurn(false, $"{reply}\nProposed tasks (not added yet):\n{Describe(result.Tasks)}"));
             return new AiReply { Text = reply, Sections = ToSections(result.Tasks) };
@@ -123,23 +118,15 @@
         return plan.ToString();
     }
 
-    private static IReadOnlyList<AiListSection> ToSections(IEnumerable<SuggestedTask> tasks) =>
+    private IReadOnlyList<AiListSection> ToSections(IEnumerable<SuggestedTask> tasks) =>
         tasks.GroupBy(task => task.Date)
             .OrderBy(group => group.Key)
-            .Select(group => new AiListSection(DayLabel(group.Key), group.Select(task => new AiListItem(task.Title, task.ProjectName)).ToList()))
+            .Select(group => new AiListSection(T.DayLabel(group.Key), group.Select(task => new AiListItem(task.Title, task.ProjectName)).ToList()))
             .ToList();
 
     private static string Describe(IEnumerable<SuggestedTask> tasks) =>
         string.Join("\n", tasks.Select(task =>
             $"- {task.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}: {task.Title}{(task.ProjectName is null ? "" : $" [{task.ProjectName}]")}"));
 
-    private static string Plural(int count, string noun) => count == 1 ? $"1 {noun}" : $"{count} {noun}s";
 
-    private static string DayLabel(DateTime date) =>
-        (date.Date - DateTime.Today).Days switch
-        {
-            0 => "Today",
-            1 => "Tomorrow",
-            _ => date.ToString("ddd d MMM")
-        };
 }

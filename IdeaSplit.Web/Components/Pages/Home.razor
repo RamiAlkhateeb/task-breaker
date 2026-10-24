@@ -8,15 +8,15 @@
 
 <div class="page-container has-composer">
     <div class="page-header">
-        <div><h1>NxtTask</h1>@if (projects is { Count: > 0 }) {<p class="page-subtitle">@projects.Count open @(projects.Count == 1 ? "project" : "projects")</p>}</div>
+        <div><h1>NxtTask</h1>@if (projects is { Count: > 0 }) {<p class="page-subtitle">@T.OpenProjects(projects.Count)</p>}</div>
         <div class="header-actions">
-            <NxtIconButton Label="Assistant" Href="ai" Accent="true">
+            <NxtIconButton Label="@T["assistant"]" Href="ai" Accent="true">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
             </NxtIconButton>
-            <NxtIconButton Label="Archive" Href="archive">
+            <NxtIconButton Label="@T["archive"]" Href="archive">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg>
             </NxtIconButton>
-            <NxtIconButton Label="Settings" Href="settings">
+            <NxtIconButton Label="@T["settings"]" Href="settings">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
             </NxtIconButton>
         </div>
@@ -26,27 +26,27 @@
     {
         <div class="search-box">
             <i class="bi bi-search" aria-hidden="true"></i>
-            <input type="search" class="search-input" dir="auto" placeholder="Search days and tasks" aria-label="Search days and tasks"
+            <input type="search" class="search-input" dir="auto" placeholder="@T["search_placeholder"]" aria-label="@T["search_placeholder"]"
                    @bind="query" @bind:event="oninput" />
             @if (query.Length > 0)
             {
-                <button type="button" class="search-clear" title="Clear search" aria-label="Clear search" @onclick='() => query = ""'><i class="bi bi-x-lg"></i></button>
+                <button type="button" class="search-clear" title="@T["clear_search"]" aria-label="@T["clear_search"]" @onclick='() => query = ""'><i class="bi bi-x-lg"></i></button>
             }
         </div>
     }
 
     @if (projects is null)
     {
-        <div class="loading-stack" aria-label="Loading projects" role="status">
+        <div class="loading-stack" aria-label="@T["loading_projects"]" role="status">
             <div class="skeleton-card"></div>
             <div class="skeleton-card"></div>
-            <span class="visually-hidden">Loading projects</span>
+            <span class="visually-hidden">@T["loading_projects"]</span>
         </div>
     }
     else if (projects.Count == 0)
     {
         <div class="empty-state">
-            <svg class="empty-state-art" viewBox="0 0 200 160" role="img" aria-label="Lightbulb and empty checklist illustration">
+            <svg class="empty-state-art" viewBox="0 0 200 160" role="img" aria-label="@T["empty_art"]">
                 <path d="M55 22c-19 0-34 15-34 34 0 13 7 24 17 30v13h34V86c10-6 17-17 17-30 0-19-15-34-34-34Z" fill="currentColor" opacity=".18" />
                 <path d="M55 31c-14 0-25 11-25 25 0 11 6 19 15 23v12h20V79c9-4 15-12 15-23 0-14-11-25-25-25Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" />
                 <path d="M45 103h20m-17 10h14" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
@@ -54,13 +54,13 @@
                 <rect x="102" y="32" width="72" height="96" rx="10" fill="none" stroke="currentColor" stroke-width="5" />
                 <path d="m115 60 6 6 11-13m-17 31 6 6 11-13m16-19h22m-22 24h22m-22 24h16" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
-            <h2>No projects yet</h2>
-            <p>Describe a plan in the box below and it gets split into a checklist for you.</p>
+            <h2>@T["no_projects"]</h2>
+            <p>@T["no_projects_hint"]</p>
         </div>
     }
     else if (Filtered.Count == 0)
     {
-        <p class="no-results">No matches for “@query.Trim()”.</p>
+        <p class="no-results">@T.F("no_matches", query.Trim())</p>
     }
     else
     {
@@ -68,10 +68,10 @@
         {
             <div class="card project-card" style="@CardAccent(p)" @onclick='() => Nav.NavigateTo($"/project/{p.Id}")'>
                 <div class="card-body">
-                    <h5 class="card-title">@p.Title</h5>
+                    <h5 class="card-title" dir="auto">@T.ProjectTitle(p)</h5>
                     <p class="project-meta">
                         <DueChip Date="p.ScheduleDate" Type="p.ScheduleType" />
-                        <span class="text-muted">@p.DoneCount/@p.TotalCount tasks</span>
+                        <span class="text-muted">@T.F("task_progress", p.DoneCount, p.TotalCount)</span>
                     </p>
                     <div class="progress task-progress">
                         <div class="progress-bar" style="width:@(p.ProgressPercent)%"></div>
@@ -91,8 +91,8 @@
                     }
                     <div class="project-card-footer">
                         <div class="project-card-actions">
-                            <button class="btn btn-link icon-button card-action" title="@(p.IsPinned ? "Unpin project" : "Pin project")" aria-label="@(p.IsPinned ? "Unpin project" : "Pin project")" @onclick="() => TogglePin(p.Id)" @onclick:stopPropagation="true"><i class="bi @(p.IsPinned ? "bi-pin-angle-fill" : "bi-pin-angle")"></i></button>
-                            <button class="btn btn-link icon-button card-action delete-project-button" title="Delete project" aria-label="Delete project" @onclick="() => ConfirmDelete(p.Id)" @onclick:stopPropagation="true"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-link icon-button card-action" title="@(p.IsPinned ? T["unpin"] : T["pin"])" aria-label="@(p.IsPinned ? T["unpin"] : T["pin"])" @onclick="() => TogglePin(p.Id)" @onclick:stopPropagation="true"><i class="bi @(p.IsPinned ? "bi-pin-angle-fill" : "bi-pin-angle")"></i></button>
+                            <button class="btn btn-link icon-button card-action delete-project-button" title="@T["delete_project"]" aria-label="@T["delete_project"]" @onclick="() => ConfirmDelete(p.Id)" @onclick:stopPropagation="true"><i class="bi bi-trash"></i></button>
                         </div>
                     </div>
                 </div>
@@ -112,7 +112,7 @@
     private List<IdeaSplit.Shared.Models.Project> Filtered =>
         projects is null || !HasQuery
             ? projects ?? []
-            : projects.Where(project => Matches(project.Title) || TaskHits(project).Count > 0).ToList();
+            : projects.Where(project => Matches(project.Title) || Matches(T.ProjectTitle(project)) || TaskHits(project).Count > 0).ToList();
 
     private bool Matches(string? value) =>
         value is not null && value.Contains(query.Trim(), StringComparison.OrdinalIgnoreCase);
@@ -141,7 +141,7 @@
 
     private async Task ConfirmDelete(int projectId)
     {
-        if (await JS.InvokeAsync<bool>("confirm", "Delete this project and all of its tasks?"))
+        if (await JS.InvokeAsync<bool>("confirm", T["confirm_delete_project"]))
         {
             await ProjectStore.DeleteProjectAsync(projectId);
             await LoadProjects();

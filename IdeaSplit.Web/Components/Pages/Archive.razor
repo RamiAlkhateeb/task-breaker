@@ -5,22 +5,22 @@
 @inject NavigationManager Nav
 
 <div class="page-container">
-    <button class="btn btn-link icon-button back-button" title="Back" aria-label="Back" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left"></i></button>
-    <h1>Archive</h1>
+    <button class="btn btn-link icon-button back-button" title="@T["back"]" aria-label="@T["back"]" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left flip-rtl"></i></button>
+    <h1>@T["archive"]</h1>
 
     @if (projects is null)
     {
-        <div class="loading-stack" aria-label="Loading archived projects" role="status">
+        <div class="loading-stack" aria-label="@T["loading_archive"]" role="status">
             <div class="skeleton-card"></div>
             <div class="skeleton-card"></div>
-            <span class="visually-hidden">Loading archived projects</span>
+            <span class="visually-hidden">@T["loading_archive"]</span>
         </div>
     }
     else if (projects.Count == 0)
     {
         <div class="empty-state">
-            <h2>No archived projects</h2>
-            <p>Completed projects show up here automatically.</p>
+            <h2>@T["no_archived"]</h2>
+            <p>@T["no_archived_hint"]</p>
         </div>
     }
     else
@@ -29,10 +29,10 @@
         {
             <div class="card project-card" @onclick="() => Toggle(p.Id)">
                 <div class="card-body">
-                    <h5 class="card-title">@p.Title</h5>
+                    <h5 class="card-title" dir="auto">@T.ProjectTitle(p)</h5>
                     <p class="project-meta">
                         <DueChip Date="p.ScheduleDate" Type="p.ScheduleType" Muted="true" />
-                        <span class="text-muted">@p.DoneCount/@p.TotalCount tasks</span>
+                        <span class="text-muted">@T.F("task_progress", p.DoneCount, p.TotalCount)</span>
                     </p>
                     <div class="progress task-progress">
                         <div class="progress-bar" style="width:@(p.ProgressPercent)%"></div>
@@ -59,14 +59,14 @@
                             }
                             @if (p.TotalCount == 0)
                             {
-                                <li class="text-muted">No tasks.</li>
+                                <li class="text-muted">@T["no_tasks"]</li>
                             }
                         </ul>
                     }
                     <div class="project-card-footer">
                         <div class="project-card-actions">
-                            <button class="btn btn-link icon-button card-action" title="@(expanded.Contains(p.Id) ? "Hide tasks" : "View tasks")" aria-label="@(expanded.Contains(p.Id) ? "Hide tasks" : "View tasks")" @onclick="() => Toggle(p.Id)" @onclick:stopPropagation="true"><i class="bi @(expanded.Contains(p.Id) ? "bi-chevron-up" : "bi-chevron-down")"></i></button>
-                            <button class="btn btn-link icon-button card-action" title="Unarchive project" aria-label="Unarchive project" @onclick="() => Unarchive(p.Id)" @onclick:stopPropagation="true"><i class="bi bi-box-arrow-up"></i></button>
+                            <button class="btn btn-link icon-button card-action" title="@(expanded.Contains(p.Id) ? T["hide_tasks"] : T["view_tasks"])" aria-label="@(expanded.Contains(p.Id) ? T["hide_tasks"] : T["view_tasks"])" @onclick="() => Toggle(p.Id)" @onclick:stopPropagation="true"><i class="bi @(expanded.Contains(p.Id) ? "bi-chevron-up" : "bi-chevron-down")"></i></button>
+                            <button class="btn btn-link icon-button card-action" title="@T["unarchive"]" aria-label="@T["unarchive"]" @onclick="() => Unarchive(p.Id)" @onclick:stopPropagation="true"><i class="bi bi-box-arrow-up"></i></button>
                         </div>
                     </div>
                 </div>
