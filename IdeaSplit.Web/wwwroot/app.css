@@ -224,6 +224,7 @@ textarea.form-control { min-height: 120px; }
     gap: 6px;
     transition: all .2s ease;
 }
+.entry-kind-toggle { display: flex; margin-bottom: 12px; }
 .schedule-type-btn.active { background: var(--color-card-bg); color: var(--color-primary); box-shadow: var(--shadow-sm); }
 .version-banner { position: fixed; right: 16px; bottom: 112px; z-index: 20; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 8px 8px 8px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-card-bg); box-shadow: var(--shadow-lg); color: var(--color-text-main); }
 .version-banner .btn-sm { min-height: 36px; }

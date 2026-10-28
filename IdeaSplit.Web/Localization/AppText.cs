@@ -141,6 +141,11 @@ public sealed class AppText
             ["pick_future"] = "Pick today or a future date.",
             ["pick_deadline"] = "Pick a deadline between tomorrow and {0} days from now.",
             ["added_to_days"] = "Added tasks to {0}.",
+            ["entry_kind"] = "Type",
+            ["kind_task"] = "Task",
+            ["kind_project"] = "Project",
+            ["task_hint"] = "Added as-is, no AI breakdown.",
+            ["added_tasks_to_day"] = "Added {0} to {1}.",
 
             ["assistant_subtitle"] = "Talk through your week, then add what fits",
             ["assistant_empty"] = "Tell me what you have going on. I'll ask a question or two, suggest tasks for your week, and add them once you say so.",
@@ -226,6 +231,11 @@ public sealed class AppText
             ["pick_future"] = "اختر اليوم أو تاريخًا لاحقًا.",
             ["pick_deadline"] = "اختر موعدًا نهائيًا بين الغد و{0} يومًا من الآن.",
             ["added_to_days"] = "أُضيفت المهام إلى {0}.",
+            ["entry_kind"] = "النوع",
+            ["kind_task"] = "مهمة",
+            ["kind_project"] = "مشروع",
+            ["task_hint"] = "تُضاف كما هي دون تقسيم.",
+            ["added_tasks_to_day"] = "أُضيفت {0} إلى {1}.",
 
             ["assistant_subtitle"] = "تحدّث عن أسبوعك، ثم أضف ما يناسبك",
             ["assistant_empty"] = "أخبرني بما لديك. سأسألك سؤالًا أو اثنين، ثم أقترح مهامًا لأسبوعك وأضيفها عندما توافق.",

@@ -29,6 +29,16 @@ jobs:
         run: |
           printf '{"version":"%s"}\n' "${{ github.sha }}" > IdeaSplit.Web/wwwroot/version.json
 
+      # Public by design (row-level security protects the data), so these are environment
+      # variables, not secrets: Settings > Environments > Task-Breaker-Environment > Variables.
+      - name: Write Supabase config
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          jq -n --arg url "$SUPABASE_URL" --arg key "$SUPABASE_PUBLISHABLE_KEY" \
+            '{Supabase: {Url: $url, PublishableKey: $key}}' > IdeaSplit.Web/wwwroot/appsettings.json
+
       - name: Publish WASM app
         run: dotnet publish IdeaSplit.Web/IdeaSplit.Web.csproj -c Release -o publish
 
