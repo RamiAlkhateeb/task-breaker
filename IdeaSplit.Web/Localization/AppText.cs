@@ -160,7 +160,26 @@ public sealed class AppText
             ["dictation_title"] = "Dictation",
             ["dictation_desc"] = "The language the microphone listens for in the plan box and the assistant.",
             ["dictation_label"] = "Dictation language",
-            ["dictation_saved"] = "Dictation language saved."
+            ["dictation_saved"] = "Dictation language saved.",
+            ["account_title"] = "Account & sync",
+            ["account_desc"] = "Sign in with your email to keep your projects in sync across your devices.",
+            ["email_label"] = "Email",
+            ["send_sign_in_email"] = "Send sign-in email",
+            ["code_sent"] = "We sent a sign-in email to {0}. Enter the code from it, or open its link on this device.",
+            ["code_label"] = "Code",
+            ["verify"] = "Sign in",
+            ["different_email"] = "Use a different email",
+            ["signed_in_label"] = "Signed in as",
+            ["signed_in_as"] = "Signed in as {0}.",
+            ["sign_in_failed"] = "Sign-in failed: {0}",
+            ["syncing"] = "Syncing…",
+            ["last_synced"] = "Synced at {0}.",
+            ["not_synced_yet"] = "Not synced yet.",
+            ["sync_now"] = "Sync now",
+            ["sign_out"] = "Sign out",
+            ["confirm_sign_out"] = "Sign out? Your projects stay in your account and are removed from this device.",
+            ["confirm_sign_out_unsynced"] = "Some changes couldn't be uploaded and will be lost. Sign out anyway?",
+            ["signed_out"] = "Signed out."
         },
         ["ar"] = new()
         {
@@ -250,7 +269,26 @@ public sealed class AppText
             ["dictation_title"] = "الإملاء الصوتي",
             ["dictation_desc"] = "اللغة التي يستمع إليها الميكروفون في مربع الخطة وفي المساعد.",
             ["dictation_label"] = "لغة الإملاء",
-            ["dictation_saved"] = "تم حفظ لغة الإملاء."
+            ["dictation_saved"] = "تم حفظ لغة الإملاء.",
+            ["account_title"] = "الحساب والمزامنة",
+            ["account_desc"] = "سجّل الدخول ببريدك الإلكتروني لمزامنة مشاريعك بين أجهزتك.",
+            ["email_label"] = "البريد الإلكتروني",
+            ["send_sign_in_email"] = "إرسال بريد تسجيل الدخول",
+            ["code_sent"] = "أرسلنا بريد تسجيل الدخول إلى {0}. أدخل الرمز الموجود فيه، أو افتح رابطه على هذا الجهاز.",
+            ["code_label"] = "الرمز",
+            ["verify"] = "تسجيل الدخول",
+            ["different_email"] = "استخدام بريد آخر",
+            ["signed_in_label"] = "مسجّل الدخول باسم",
+            ["signed_in_as"] = "تم تسجيل الدخول باسم {0}.",
+            ["sign_in_failed"] = "تعذّر تسجيل الدخول: {0}",
+            ["syncing"] = "جارٍ المزامنة…",
+            ["last_synced"] = "تمت المزامنة الساعة {0}.",
+            ["not_synced_yet"] = "لم تتم المزامنة بعد.",
+            ["sync_now"] = "زامن الآن",
+            ["sign_out"] = "تسجيل الخروج",
+            ["confirm_sign_out"] = "تسجيل الخروج؟ تبقى مشاريعك في حسابك وتُزال من هذا الجهاز.",
+            ["confirm_sign_out_unsynced"] = "تعذّر رفع بعض التغييرات وستُفقد. هل تريد تسجيل الخروج على أي حال؟",
+            ["signed_out"] = "تم تسجيل الخروج."
         }
     };
 }

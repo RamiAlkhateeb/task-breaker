@@ -1,6 +1,8 @@
 # NxtTask (IdeaSplit)
 
-IdeaSplit is a fully client-side Blazor WebAssembly app. Projects, settings, and API keys are stored in the browser's local storage; no backend or database is required.
+IdeaSplit is a client-side Blazor WebAssembly app. Projects, settings, and API keys are stored in the browser's local storage, so the app works offline and without an account.
+
+Optional sign-in (Settings → Account & sync) syncs projects between devices through Supabase: email sign-in, plus `projects` and `tasks` tables protected by row-level security. The deploy workflow writes the project's public URL and publishable key into `wwwroot/appsettings.json` from the `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` environment variables. Without that file the Account section is hidden. Sync is in `IdeaSplit.Shared/Sync`: local changes are uploaded, then everything is downloaded and merged, with the latest edit winning.
 
 `IdeaSplit.Shared` contains reusable models, the browser project-store contract, and the Gemini service. A future MAUI Blazor Hybrid app can reference it and provide platform-specific storage implementations.
 

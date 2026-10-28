@@ -1,0 +1,118 @@
+@using IdeaSplit.Shared.Sync
+@implements IDisposable
+@inject SupabaseAuth Auth
+@inject SupabaseSync Sync
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject ToastService Toasts
+
+@if (Auth.IsConfigured)
+{
+    <NxtSettingsSection Icon="☁️" Title="@T["account_title"]" Description="@T["account_desc"]">
+        @if (Auth.Session is { } session)
+        {
+            <div class="account-signed-in">
+                <span class="nxt-label">@T["signed_in_label"]</span>
+                <span class="account-email" dir="ltr">@session.Email</span>
+            </div>
+            <p class="account-status @(Sync.LastError is null ? "" : "account-status-error")" role="status">
+                @if (Sync.IsSyncing) { <NxtSpinner Small="true" /> @T["syncing"] }
+                else if (Sync.LastError is { } error) { @error }
+                else if (Sync.LastSyncedAt is { } at) { @T.F("last_synced", at.ToLocalTime().ToString("t")) }
+                else { @T["not_synced_yet"] }
+            </p>
+            <div class="account-actions">
+                <NxtButton Variant="secondary" OnClick="Sync.SyncNowAsync" Busy="Sync.IsSyncing">@T["sync_now"]</NxtButton>
+                <NxtButton Variant="ghost" OnClick="SignOutAsync">@T["sign_out"]</NxtButton>
+            </div>
+        }
+        else if (codeSentTo is null)
+        {
+            <label class="nxt-label" for="account-email">@T["email_label"]</label>
+            <NxtTextInput Id="account-email" Type="email" Value="@email" ValueChanged="v => email = v" Placeholder="name@example.com"
+                          dir="ltr" autocomplete="email" inputmode="email" @onkeydown="OnEmailKeyDown" />
+            <NxtButton Variant="primary" OnClick="SendCodeAsync" Busy="busy" Disabled="@(!LooksLikeEmail(email))">@T["send_sign_in_email"]</NxtButton>
+        }
+        else
+        {
+            <p class="account-hint">@T.F("code_sent", codeSentTo)</p>
+            <label class="nxt-label" for="account-code">@T["code_label"]</label>
+            <NxtTextInput Id="account-code" Value="@otp" ValueChanged="v => otp = v" Placeholder="123456"
+                          dir="ltr" autocomplete="one-time-code" inputmode="numeric" @onkeydown="OnCodeKeyDown" />
+            <div class="account-actions">
+                <NxtButton Variant="primary" OnClick="VerifyAsync" Busy="busy" Disabled="@(otp.Trim().Length < 6)">@T["verify"]</NxtButton>
+                <NxtButton Variant="ghost" OnClick="() => { codeSentTo = null; otp = string.Empty; }">@T["different_email"]</NxtButton>
+            </div>
+        }
+    </NxtSettingsSection>
+}
+
+@code {
+    private string email = "";
+    private string otp = "";
+    private string? codeSentTo;
+    private bool busy;
+
+    protected override void OnInitialized()
+    {
+        Auth.Changed += Refresh;
+        Sync.StatusChanged += Refresh;
+    }
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+
+    private static bool LooksLikeEmail(string value) => value.Trim() is var trimmed && trimmed.Contains('@') && trimmed.Contains('.') && !trimmed.Contains(' ');
+
+    private async Task OnEmailKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && LooksLikeEmail(email)) await SendCodeAsync();
+    }
+
+    private async Task OnCodeKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && otp.Trim().Length >= 6) await VerifyAsync();
+    }
+
+    private async Task SendCodeAsync()
+    {
+        busy = true;
+        try
+        {
+            var address = email.Trim();
+            var error = await Auth.SendCodeAsync(address, Nav.BaseUri);
+            if (error is null) codeSentTo = address;
+            else Toasts.Show(error, isError: true);
+        }
+        finally { busy = false; }
+    }
+
+    private async Task VerifyAsync()
+    {
+        busy = true;
+        try
+        {
+            var error = await Auth.VerifyCodeAsync(codeSentTo!, otp);
+            if (error is not null) { Toasts.Show(error, isError: true); return; }
+            codeSentTo = null;
+            otp = "";
+            Toasts.Show(T.F("signed_in_as", Auth.Session!.Email));
+        }
+        finally { busy = false; }
+    }
+
+    private async Task SignOutAsync()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", T["confirm_sign_out"])) return;
+        // Push anything not uploaded yet, so signing out never loses edits.
+        await Sync.SyncNowAsync();
+        if (Sync.LastError is not null && !await JS.InvokeAsync<bool>("confirm", T["confirm_sign_out_unsynced"])) return;
+        await Sync.SignOutAsync(clearLocalData: true);
+        Toasts.Show(T["signed_out"]);
+    }
+
+    public void Dispose()
+    {
+        Auth.Changed -= Refresh;
+        Sync.StatusChanged -= Refresh;
+    }
+}

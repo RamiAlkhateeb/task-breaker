@@ -1,18 +1,37 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject INxtLocale Locale
+@inject IdeaSplit.Shared.Sync.SupabaseSync Sync
 
-@* Keyed by language so every page is rebuilt with the new strings when the language changes. *@
-<div class="app-shell" dir="@Locale.Direction" lang="@Locale.Language" @key="Locale.Language">
+@* Keyed by language so every page is rebuilt with the new strings when the language changes,
+   and by data version so pages reload when another device's changes arrive. *@
+<div class="app-shell" dir="@Locale.Direction" lang="@Locale.Language" @key="@($"{Locale.Language}:{dataVersion}")">
     @Body
 </div>
+<SyncHost />
 <NxtToastHost />
 <NxtVersionBanner />
 
 @code {
-    protected override void OnInitialized() => Locale.Changed += OnLanguageChanged;
+    private int dataVersion;
+
+    protected override void OnInitialized()
+    {
+        Locale.Changed += OnLanguageChanged;
+        Sync.DataChanged += OnDataChanged;
+    }
 
     private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
 
-    public void Dispose() => Locale.Changed -= OnLanguageChanged;
+    private void OnDataChanged() => InvokeAsync(() =>
+    {
+        dataVersion++;
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        Locale.Changed -= OnLanguageChanged;
+        Sync.DataChanged -= OnDataChanged;
+    }
 }

@@ -77,9 +77,9 @@
 
 @code {
     private List<Project>? projects;
-    private readonly HashSet<int> expanded = [];
+    private readonly HashSet<Guid> expanded = [];
 
-    private void Toggle(int projectId)
+    private void Toggle(Guid projectId)
     {
         if (!expanded.Remove(projectId)) expanded.Add(projectId);
     }
@@ -92,7 +92,7 @@
             .OrderByDescending(project => project.CreatedAt)
             .ToList();
 
-    private async Task Unarchive(int projectId)
+    private async Task Unarchive(Guid projectId)
     {
         await ProjectStore.SetArchivedAsync(projectId, false);
         await LoadProjects();

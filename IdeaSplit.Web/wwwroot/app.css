@@ -292,3 +292,10 @@ textarea.form-control { min-height: 120px; }
 
 /* Arrows that point "back" or "forward" follow the reading direction in Arabic. */
 [dir="rtl"] .flip-rtl { display: inline-block; transform: scaleX(-1); }
+
+/* ---- Account & sync (Settings) ---- */
+.account-signed-in { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.account-email { font-weight: 600; overflow-wrap: anywhere; }
+.account-status, .account-hint { margin: 0; font-size: 14px; color: var(--nxt-text-2); display: flex; gap: 8px; align-items: center; }
+.account-status-error { color: var(--nxt-danger); }
+.account-actions { display: flex; flex-wrap: wrap; gap: 8px; }

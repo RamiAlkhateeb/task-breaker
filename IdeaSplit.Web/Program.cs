@@ -1,6 +1,7 @@
 using Blazored.LocalStorage;
 using IdeaSplit.Shared.Data;
 using IdeaSplit.Shared.Services;
+using IdeaSplit.Shared.Sync;
 using IdeaSplit.Web.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -12,7 +13,15 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddBlazoredLocalStorage();
-builder.Services.AddScoped<IProjectStore, LocalStorageProjectStore>();
+builder.Services.AddScoped<LocalStorageProjectStore>();
+builder.Services.AddScoped<IProjectStore>(sp => sp.GetRequiredService<LocalStorageProjectStore>());
+builder.Services.AddScoped<ISyncStore>(sp => sp.GetRequiredService<LocalStorageProjectStore>());
+// Sign-in and sync are off when the build has no Supabase values (local runs, forks).
+builder.Services.AddSingleton(new SupabaseConfig(
+    builder.Configuration["Supabase:Url"] ?? "",
+    builder.Configuration["Supabase:PublishableKey"] ?? ""));
+builder.Services.AddScoped<SupabaseAuth>();
+builder.Services.AddScoped<SupabaseSync>();
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<GeminiService>();
 builder.Services.AddScoped(_ => new HttpClient

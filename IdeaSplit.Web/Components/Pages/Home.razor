@@ -133,13 +133,13 @@
             .ThenByDescending(project => project.CreatedAt)
             .ToList();
 
-    private async Task TogglePin(int projectId)
+    private async Task TogglePin(Guid projectId)
     {
         await ProjectStore.TogglePinAsync(projectId);
         await LoadProjects();
     }
 
-    private async Task ConfirmDelete(int projectId)
+    private async Task ConfirmDelete(Guid projectId)
     {
         if (await JS.InvokeAsync<bool>("confirm", T["confirm_delete_project"]))
         {
