@@ -9,7 +9,7 @@
 <NxtSettingsPage BackHref="/">
     <AppSections>
         <AccountSection />
-        <NxtSettingsSection Icon="🎙️" Title="@T["dictation_title"]" Description="@T["dictation_desc"]">
+        <NxtSettingsSection Icon="mic" Title="@T["dictation_title"]" Description="@T["dictation_desc"]">
             <NxtSegmented TValue="string" Label="@T["dictation_label"]" Value="@speechLanguage" ValueChanged="SaveSpeechLanguageAsync"
                           Options="@([("en-US", "English"), ("ar-SA", "العربية")])" />
         </NxtSettingsSection>

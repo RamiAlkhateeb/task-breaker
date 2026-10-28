@@ -7,7 +7,7 @@
 
 @if (Auth.IsConfigured)
 {
-    <NxtSettingsSection Icon="☁️" Title="@T["account_title"]" Description="@T["account_desc"]">
+    <NxtSettingsSection Icon="cloud" Title="@T["account_title"]" Description="@T["account_desc"]">
         @if (Auth.Session is { } session)
         {
             <div class="account-signed-in">
