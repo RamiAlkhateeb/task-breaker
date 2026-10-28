@@ -5,10 +5,10 @@ namespace IdeaSplit.Shared.Data;
 public interface IProjectStore
 {
     Task<List<Project>> GetProjectsAsync();
-    Task<Project?> GetProjectAsync(int projectId);
+    Task<Project?> GetProjectAsync(Guid projectId);
     Task SaveProjectAsync(Project project);
-    Task DeleteProjectAsync(int projectId);
-    Task TogglePinAsync(int projectId);
-    Task SetArchivedAsync(int projectId, bool archived);
+    Task DeleteProjectAsync(Guid projectId);
+    Task TogglePinAsync(Guid projectId);
+    Task SetArchivedAsync(Guid projectId, bool archived);
     Task<Project> GetOrCreateDayProjectAsync(DateTime date);
 }

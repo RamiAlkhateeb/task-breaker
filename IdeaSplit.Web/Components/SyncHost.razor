@@ -1,0 +1,56 @@
+@using IdeaSplit.Shared.Sync
+@implements IDisposable
+@inject SupabaseAuth Auth
+@inject SupabaseSync Sync
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject ToastService Toasts
+
+@* No UI: finishes magic-link sign-in and keeps sync running in the background. *@
+
+@code {
+    private DotNetObjectReference<SyncHost>? self;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsConfigured) return;
+        await Auth.InitializeAsync();
+        await Sync.InitializeAsync();
+        Auth.Changed += OnAuthChanged;
+
+        var fragment = new Uri(Nav.Uri).Fragment;
+        if (fragment.Length > 1)
+        {
+            var result = await Auth.HandleRedirectAsync(fragment);
+            if (result is not null)
+            {
+                await JS.InvokeVoidAsync("nxtTaskSync.clearHash");
+                if (result.SignedIn) Toasts.Show(T.F("signed_in_as", Auth.Session!.Email));
+                else Toasts.Show(T.F("sign_in_failed", result.Error ?? ""), isError: true);
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !Auth.IsConfigured) return;
+        self = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("nxtTaskSync.register", self);
+        _ = Sync.SyncNowAsync();
+    }
+
+    [JSInvokable] public Task OnVisible() => Sync.SyncNowAsync();
+
+    [JSInvokable] public Task OnHidden() => Sync.SyncNowAsync();
+
+    private void OnAuthChanged()
+    {
+        if (Auth.IsSignedIn) _ = Sync.SyncNowAsync();
+    }
+
+    public void Dispose()
+    {
+        Auth.Changed -= OnAuthChanged;
+        self?.Dispose();
+    }
+}

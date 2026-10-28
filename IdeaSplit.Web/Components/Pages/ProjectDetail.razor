@@ -1,4 +1,4 @@
-@page "/project/{ProjectId:int}"
+@page "/project/{ProjectId:guid}"
 @using IdeaSplit.Shared.Data
 @using IdeaSplit.Shared.Models
 @inject IProjectStore ProjectStore
@@ -160,18 +160,18 @@
 </div>
 
 @code {
-    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public Guid ProjectId { get; set; }
     [SupplyParameterFromQuery(Name = "model")] public string? UsedModel { get; set; }
 
     private Project? project;
-    private int? editingId;
+    private Guid? editingId;
     private string editText = "";
     private bool isEditingTitle;
     private string editTitleText = "";
     private bool showCompleted;
-    private int? menuFor;
+    private Guid? menuFor;
     private string newTaskText = "";
-    private int? addingSubtaskFor;
+    private Guid? addingSubtaskFor;
     private string newSubtaskText = "";
 
     private static bool ContainsArabic(string text) => text.Any(character =>
