@@ -55,3 +55,6 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Written by the deploy workflow from GitHub environment variables
+IdeaSplit.Web/wwwroot/appsettings.json

@@ -19,6 +19,21 @@
         <div class="composer-sheet" role="dialog" aria-label="@T["when_title"]" @onclick:stopPropagation="true">
             <h2>@T["when_title"]</h2>
 
+            <div class="schedule-type-toggle entry-kind-toggle" role="radiogroup" aria-label="@T["entry_kind"]">
+                <button type="button" class="schedule-type-btn @(isTask ? "active" : "")" aria-pressed="@isTask" @onclick="() => SetKind(true)">
+                    <i class="bi bi-check2-square" aria-hidden="true"></i> @T["kind_task"]
+                </button>
+                <button type="button" class="schedule-type-btn @(!isTask ? "active" : "")" aria-pressed="@(!isTask)" @onclick="() => SetKind(false)">
+                    <i class="bi bi-diagram-3" aria-hidden="true"></i> @T["kind_project"]
+                </button>
+            </div>
+
+            @if (isTask)
+            {
+                <p class="form-hint">@T["task_hint"]</p>
+            }
+            else
+            {
             <div class="schedule-type-toggle" role="radiogroup" aria-label="@T["plan_length"]">
                 <button type="button" class="schedule-type-btn @(planType == TaskScheduleType.DayWeek ? "active" : "")"
                         aria-pressed="@(planType == TaskScheduleType.DayWeek)" @onclick="() => SetPlanType(TaskScheduleType.DayWeek)">
@@ -29,6 +44,7 @@
                     <i class="bi bi-flag" aria-hidden="true"></i> @T["multiple_days"]
                 </button>
             </div>
+            }
 
             <label class="form-label mt-3" for="plan-date">@(planType == TaskScheduleType.ProjectDeadline ? T["deadline"] : T["date"])</label>
             <div class="quick-dates">
@@ -66,7 +82,7 @@
                     }
                     else
                     {
-                        <span>@T["create"]</span>
+                        <span>@(isTask ? T["add"] : T["create"])</span>
                     }
                 </button>
             </div>
@@ -84,6 +100,7 @@
     private string? error;
     private string speechLanguage = SettingsService.DefaultSpeechLanguage;
     private bool showSheet;
+    private bool isTask;
     private bool isWorking;
     private TaskScheduleType planType = TaskScheduleType.DayWeek;
     private DateTime? planDate = DateTime.Today;
@@ -104,12 +121,27 @@
         error = null;
         planType = TaskScheduleType.DayWeek;
         planDate = DateTime.Today;
+        isTask = LooksLikeTask(text);
         showSheet = true;
     }
 
     private void CloseSheet()
     {
         if (!isWorking) showSheet = false;
+    }
+
+    /// <summary>A single short line ("throw the trash") is almost always one to-do, not a project to break down.</summary>
+    private static bool LooksLikeTask(string value)
+    {
+        var trimmed = value.Trim();
+        return !trimmed.Contains('\n') && trimmed.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length <= 5;
+    }
+
+    private void SetKind(bool task)
+    {
+        isTask = task;
+        if (task) SetPlanType(TaskScheduleType.DayWeek);
+        error = null;
     }
 
     private void SetPlanType(TaskScheduleType type)
@@ -140,6 +172,20 @@
         try
         {
             var touched = 0;
+
+            if (isTask)
+            {
+                // Added as typed, one task per line; no Gemini call (works without an API key).
+                var titles = idea.Split('\n').Select(line => line.Trim()).Where(line => line.Length > 0).ToList();
+                var date = planDate!.Value.Date;
+                await AddTasksToDayAsync(date, titles, null);
+
+                showSheet = false;
+                text = "";
+                status = T.F("added_tasks_to_day", T.Tasks(titles.Count), T.DayLabel(date));
+                await OnCreated.InvokeAsync();
+                return;
+            }
 
             if (planType == TaskScheduleType.DayWeek)
             {
