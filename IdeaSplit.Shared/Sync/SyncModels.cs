@@ -66,6 +66,8 @@ public sealed class ProjectRow
         Deleted = false
     };
 
+    // Not a column: must not be sent to the server.
+    [JsonIgnore]
     public DateTime? ParsedScheduleDate =>
         DateTime.TryParseExact(ScheduleDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
             ? date : null;
