@@ -16,7 +16,7 @@ public sealed record SupabaseConfig(string Url, string PublishableKey)
 
 public sealed record AuthSession(string AccessToken, string RefreshToken, DateTimeOffset ExpiresAt, Guid UserId, string Email);
 
-/// <summary>Email sign-in (code or magic link) against Supabase Auth, with the session kept in localStorage.</summary>
+/// <summary>Email and password sign-in against Supabase Auth, with the session kept in localStorage.</summary>
 public sealed class SupabaseAuth
 {
     private const string SessionKey = "nxt.task.session";
@@ -47,28 +47,26 @@ public sealed class SupabaseAuth
         catch (JsonException) { Session = null; }
     }
 
-    /// <summary>Emails a sign-in code and link. Returns an error message, or null on success.</summary>
-    public async Task<string?> SendCodeAsync(string email, string redirectTo)
-    {
-        try
-        {
-            var url = $"{_config.BaseUrl}/auth/v1/otp?redirect_to={Uri.EscapeDataString(redirectTo)}";
-            using var response = await SendAsync(HttpMethod.Post, url, new { email, create_user = true }, bearer: null);
-            return response.IsSuccessStatusCode ? null : await ErrorMessageAsync(response);
-        }
-        catch (HttpRequestException) { return NetworkError; }
-    }
+    /// <summary>Signs in with email and password. Returns an error message, or null on success.</summary>
+    public Task<string?> SignInAsync(string email, string password) =>
+        StartSessionAsync($"{_config.BaseUrl}/auth/v1/token?grant_type=password", email, password);
 
-    /// <summary>Signs in with the code from the email. Returns an error message, or null on success.</summary>
-    public async Task<string?> VerifyCodeAsync(string email, string code)
+    /// <summary>
+    /// Creates an account. With email confirmation turned off in Supabase the user is signed in straight away.
+    /// Returns an error message, or null on success.
+    /// </summary>
+    public Task<string?> SignUpAsync(string email, string password) =>
+        StartSessionAsync($"{_config.BaseUrl}/auth/v1/signup", email, password);
+
+    private async Task<string?> StartSessionAsync(string url, string email, string password)
     {
         try
         {
-            using var response = await SendAsync(HttpMethod.Post, $"{_config.BaseUrl}/auth/v1/verify",
-                new { type = "email", email, token = code.Trim() }, bearer: null);
+            using var response = await SendAsync(HttpMethod.Post, url, new { email = email.Trim(), password }, bearer: null);
             if (!response.IsSuccessStatusCode) return await ErrorMessageAsync(response);
             var tokens = await response.Content.ReadFromJsonAsync<TokenResponse>();
-            if (tokens is null) return "Unexpected response from the server.";
+            // Sign-up without a session means the project still requires confirming the email first.
+            if (tokens is null || string.IsNullOrEmpty(tokens.AccessToken)) return "Check your email to confirm your account, then sign in.";
             await SetSessionAsync(tokens.AccessToken, tokens.RefreshToken, tokens.ExpiresIn);
             return null;
         }

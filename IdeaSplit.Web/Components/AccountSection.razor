@@ -2,7 +2,6 @@
 @implements IDisposable
 @inject SupabaseAuth Auth
 @inject SupabaseSync Sync
-@inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject ToastService Toasts
 
@@ -26,22 +25,18 @@
                 <NxtButton Variant="ghost" OnClick="SignOutAsync">@T["sign_out"]</NxtButton>
             </div>
         }
-        else if (codeSentTo is null)
+        else
         {
             <label class="nxt-label" for="account-email">@T["email_label"]</label>
             <NxtTextInput Id="account-email" Type="email" Value="@email" ValueChanged="v => email = v" Placeholder="name@example.com"
-                          dir="ltr" autocomplete="email" inputmode="email" @onkeydown="OnEmailKeyDown" />
-            <NxtButton Variant="primary" OnClick="SendCodeAsync" Busy="busy" Disabled="@(!LooksLikeEmail(email))">@T["send_sign_in_email"]</NxtButton>
-        }
-        else
-        {
-            <p class="account-hint">@T.F("code_sent", codeSentTo)</p>
-            <label class="nxt-label" for="account-code">@T["code_label"]</label>
-            <NxtTextInput Id="account-code" Value="@otp" ValueChanged="v => otp = v" Placeholder="123456"
-                          dir="ltr" autocomplete="one-time-code" inputmode="numeric" @onkeydown="OnCodeKeyDown" />
+                          dir="ltr" autocomplete="email" inputmode="email" />
+            <label class="nxt-label" for="account-password">@T["password_label"]</label>
+            <NxtTextInput Id="account-password" Type="password" Value="@password" ValueChanged="v => password = v"
+                          dir="ltr" autocomplete="current-password" @onkeydown="OnPasswordKeyDown" />
+            <p class="account-hint">@T["password_hint"]</p>
             <div class="account-actions">
-                <NxtButton Variant="primary" OnClick="VerifyAsync" Busy="busy" Disabled="@(otp.Trim().Length < 6)">@T["verify"]</NxtButton>
-                <NxtButton Variant="ghost" OnClick="() => { codeSentTo = null; otp = string.Empty; }">@T["different_email"]</NxtButton>
+                <NxtButton Variant="primary" OnClick="SignInAsync" Busy="busy" Disabled="@(!CanSubmit)">@T["sign_in"]</NxtButton>
+                <NxtButton Variant="secondary" OnClick="SignUpAsync" Disabled="@(busy || !CanSubmit)">@T["create_account"]</NxtButton>
             </div>
         }
     </NxtSettingsSection>
@@ -49,8 +44,7 @@
 
 @code {
     private string email = "";
-    private string otp = "";
-    private string? codeSentTo;
+    private string password = "";
     private bool busy;
 
     protected override void OnInitialized()
@@ -61,44 +55,42 @@
 
     private void Refresh() => InvokeAsync(StateHasChanged);
 
+    private bool CanSubmit => LooksLikeEmail(email) && password.Length >= MinPasswordLength;
+
+    private const int MinPasswordLength = 6;
+
     private static bool LooksLikeEmail(string value) => value.Trim() is var trimmed && trimmed.Contains('@') && trimmed.Contains('.') && !trimmed.Contains(' ');
 
-    private async Task OnEmailKeyDown(KeyboardEventArgs args)
+    private async Task OnPasswordKeyDown(KeyboardEventArgs args)
     {
-        if (args.Key == "Enter" && LooksLikeEmail(email)) await SendCodeAsync();
+        if (args.Key == "Enter" && CanSubmit && !busy) await SignInAsync();
     }
 
-    private async Task OnCodeKeyDown(KeyboardEventArgs args)
-    {
-        if (args.Key == "Enter" && otp.Trim().Length >= 6) await VerifyAsync();
-    }
+    private Task SignInAsync() => SubmitAsync(() => Auth.SignInAsync(email, password));
 
-    private async Task SendCodeAsync()
+    private Task SignUpAsync() => SubmitAsync(() => Auth.SignUpAsync(email, password));
+
+    private async Task SubmitAsync(Func<Task<string?>> attempt)
     {
         busy = true;
         try
         {
-            var address = email.Trim();
-            var error = await Auth.SendCodeAsync(address, Nav.BaseUri);
-            if (error is null) codeSentTo = address;
-            else Toasts.Show(error, isError: true);
-        }
-        finally { busy = false; }
-    }
-
-    private async Task VerifyAsync()
-    {
-        busy = true;
-        try
-        {
-            var error = await Auth.VerifyCodeAsync(codeSentTo!, otp);
-            if (error is not null) { Toasts.Show(error, isError: true); return; }
-            codeSentTo = null;
-            otp = "";
+            var error = await attempt();
+            if (error is not null) { Toasts.Show(Friendly(error), isError: true); return; }
+            password = "";
             Toasts.Show(T.F("signed_in_as", Auth.Session!.Email));
         }
         finally { busy = false; }
     }
+
+    /// <summary>Supabase answers in English; show the common cases in the app's language.</summary>
+    private string Friendly(string error) => error switch
+    {
+        _ when error.Contains("Invalid login credentials", StringComparison.OrdinalIgnoreCase) => T["error_wrong_password"],
+        _ when error.Contains("already registered", StringComparison.OrdinalIgnoreCase) => T["error_account_exists"],
+        _ when error.Contains("Password should", StringComparison.OrdinalIgnoreCase) => T["error_weak_password"],
+        _ => error
+    };
 
     private async Task SignOutAsync()
     {
