@@ -93,7 +93,7 @@ textarea.form-control { min-height: 120px; }
 .btn-outline-primary { --bs-btn-color: var(--color-primary); --bs-btn-border-color: var(--color-primary); --bs-btn-hover-bg: var(--color-primary-light); --bs-btn-hover-border-color: var(--color-primary); --bs-btn-hover-color: var(--color-primary-hover); }
 .btn-outline-secondary { --bs-btn-color: var(--color-text-secondary); --bs-btn-border-color: var(--color-border); --bs-btn-hover-bg: var(--color-page); --bs-btn-hover-border-color: var(--color-text-secondary); --bs-btn-hover-color: var(--color-text-main); }
 .icon-button { width: 44px; min-width: 44px; height: 44px; padding: 0; }
-.icon-button i { font-size: 1.1rem; }
+.icon-button .nxt-icon { width: 20px; height: 20px; }
 .action-button { width: 100%; }
 .back-button { justify-content: center; }
 .model-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; }
@@ -140,8 +140,8 @@ textarea.form-control { min-height: 120px; }
 .task-menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-text-main); font: inherit; font-size: .95rem; text-align: start; cursor: pointer; }
 .task-menu button:hover { background: var(--color-page); }
 .task-menu button.is-danger { color: var(--color-danger); }
-.task-menu button i { width: 18px; color: var(--color-text-secondary); }
-.task-menu button.is-danger i { color: var(--color-danger); }
+.task-menu button .nxt-icon { width: 18px; height: 18px; color: var(--color-text-secondary); }
+.task-menu button.is-danger .nxt-icon { color: var(--color-danger); }
 .task-group + .task-group { border-top: 1px solid var(--color-border); }
 .task-menu-btn:hover { color: var(--color-text-main); background: var(--color-border); }
 .subtask-row { padding-inline-start: 38px; }
@@ -157,7 +157,7 @@ textarea.form-control { min-height: 120px; }
 .task-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .task-project { margin-top: 1px; font-size: .78rem; font-weight: 400; line-height: 1.3; color: var(--color-text-secondary); opacity: .85; overflow-wrap: anywhere; }
 .search-box { position: relative; display: flex; align-items: center; margin: 0 0 18px; }
-.search-box > i.bi-search { position: absolute; inset-inline-start: 14px; color: var(--color-text-secondary); pointer-events: none; }
+.search-box > .nxt-icon { position: absolute; inset-inline-start: 14px; width: 18px; height: 18px; color: var(--color-text-secondary); pointer-events: none; }
 .search-input { width: 100%; min-height: 44px; padding: 8px 40px 8px 40px; border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-page); color: var(--color-text-main); font: inherit; outline: 0; transition: border-color .15s ease, background-color .15s ease; }
 .search-input:focus { border-color: var(--color-primary); background: var(--color-card-bg); }
 .search-clear { position: absolute; inset-inline-end: 4px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
@@ -167,10 +167,10 @@ textarea.form-control { min-height: 120px; }
 .search-hit-project { margin-inline-start: 6px; font-size: .76rem; opacity: .85; }
 .archive-tasks { margin: 10px 0 0; padding: 10px 0 0; list-style: none; border-top: 1px solid var(--color-border); }
 .archive-tasks > li { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; }
-.archive-tasks > li > i { flex: 0 0 auto; margin-top: 3px; color: var(--color-text-secondary); }
+.archive-tasks > li > .nxt-icon { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 3px; color: var(--color-text-secondary); }
 .archive-tasks .is-done { color: var(--color-success); }
 .archive-subtask { display: block; margin-top: 4px; padding-inline-start: 4px; font-size: .9rem; color: var(--color-text-secondary); }
-.archive-subtask .bi { margin-inline-end: 4px; }
+.archive-subtask .nxt-icon { width: 15px; height: 15px; margin-inline-end: 4px; vertical-align: -2px; }
 .no-results { margin: 32px 0; text-align: center; color: var(--color-text-secondary); }
 .task-due-badge {
     display: inline-flex;
@@ -198,7 +198,7 @@ textarea.form-control { min-height: 120px; }
 .task-complete { color: var(--color-text-secondary); text-decoration: line-through; transition: color .2s ease; }
 .add-task-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 4px 0; border-bottom: 1px solid var(--color-border); transition: border-color .15s ease; }
 .add-task-row:focus-within { border-color: var(--color-primary); }
-.add-task-glyph { flex: 0 0 24px; text-align: center; color: var(--color-primary); font-size: 1.1rem; }
+.add-task-glyph { flex: 0 0 24px; width: 22px; height: 22px; color: var(--color-primary); }
 .add-task-input { flex: 1; min-width: 0; min-height: 44px; border: 0; outline: 0; background: transparent; color: var(--color-text-main); font: inherit; }
 .add-task-input::placeholder { color: var(--color-text-secondary); }
 .add-task-row .btn { width: 38px; min-width: 38px; height: 38px; min-height: 38px; border-radius: 50%; }
@@ -364,3 +364,9 @@ body:has(.composer) .nxt-toast { bottom: calc(86px + env(safe-area-inset-bottom,
 .drag-handle:hover { opacity: 1; }
 .drag-ghost { opacity: .4; background: var(--color-primary-light); border-radius: var(--radius-sm); }
 .sortable-chosen .task-row { background: var(--color-page); }
+
+/* Line icons (Nxt.UI) in badges, buttons and toggles */
+.task-due-badge .nxt-icon { width: 13px; height: 13px; }
+.schedule-type-btn .nxt-icon { width: 17px; height: 17px; }
+.search-clear .nxt-icon { width: 16px; height: 16px; }
+.archive-tasks .nxt-icon.is-done { color: var(--color-success); }

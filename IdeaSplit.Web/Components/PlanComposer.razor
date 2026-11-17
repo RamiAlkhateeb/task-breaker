@@ -21,10 +21,10 @@
 
             <div class="schedule-type-toggle entry-kind-toggle" role="radiogroup" aria-label="@T["entry_kind"]">
                 <button type="button" class="schedule-type-btn @(isTask ? "active" : "")" aria-pressed="@isTask" @onclick="() => SetKind(true)">
-                    <i class="bi bi-check2-square" aria-hidden="true"></i> @T["kind_task"]
+                    <NxtIcon Name="square-check" /> @T["kind_task"]
                 </button>
                 <button type="button" class="schedule-type-btn @(!isTask ? "active" : "")" aria-pressed="@(!isTask)" @onclick="() => SetKind(false)">
-                    <i class="bi bi-diagram-3" aria-hidden="true"></i> @T["kind_project"]
+                    <NxtIcon Name="network" /> @T["kind_project"]
                 </button>
             </div>
 
@@ -37,11 +37,11 @@
             <div class="schedule-type-toggle" role="radiogroup" aria-label="@T["plan_length"]">
                 <button type="button" class="schedule-type-btn @(planType == TaskScheduleType.DayWeek ? "active" : "")"
                         aria-pressed="@(planType == TaskScheduleType.DayWeek)" @onclick="() => SetPlanType(TaskScheduleType.DayWeek)">
-                    <i class="bi bi-calendar3" aria-hidden="true"></i> @T["one_day"]
+                    <NxtIcon Name="calendar" /> @T["one_day"]
                 </button>
                 <button type="button" class="schedule-type-btn @(planType == TaskScheduleType.ProjectDeadline ? "active" : "")"
                         aria-pressed="@(planType == TaskScheduleType.ProjectDeadline)" @onclick="() => SetPlanType(TaskScheduleType.ProjectDeadline)">
-                    <i class="bi bi-flag" aria-hidden="true"></i> @T["multiple_days"]
+                    <NxtIcon Name="flag" /> @T["multiple_days"]
                 </button>
             </div>
             }

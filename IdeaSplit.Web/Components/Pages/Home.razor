@@ -26,12 +26,12 @@
     @if (allProjects is { Count: > 0 })
     {
         <div class="search-box">
-            <i class="bi bi-search" aria-hidden="true"></i>
+            <NxtIcon Name="search" />
             <input type="search" class="search-input" dir="auto" placeholder="@T["search_placeholder"]" aria-label="@T["search_placeholder"]"
                    @bind="query" @bind:event="oninput" />
             @if (query.Length > 0)
             {
-                <button type="button" class="search-clear" title="@T["clear_search"]" aria-label="@T["clear_search"]" @onclick='() => query = ""'><i class="bi bi-x-lg"></i></button>
+                <button type="button" class="search-clear" title="@T["clear_search"]" aria-label="@T["clear_search"]" @onclick='() => query = ""'><NxtIcon Name="x" /></button>
             }
         </div>
     }
@@ -98,8 +98,8 @@
                     }
                     <div class="project-card-footer">
                         <div class="project-card-actions">
-                            <button class="btn btn-link icon-button card-action" title="@(p.IsPinned ? T["unpin"] : T["pin"])" aria-label="@(p.IsPinned ? T["unpin"] : T["pin"])" @onclick="() => TogglePin(p.Id)" @onclick:stopPropagation="true"><i class="bi @(p.IsPinned ? "bi-pin-angle-fill" : "bi-pin-angle")"></i></button>
-                            <button class="btn btn-link icon-button card-action delete-project-button" title="@T["delete_project"]" aria-label="@T["delete_project"]" @onclick="() => DeleteAsync(p.Id)" @onclick:stopPropagation="true"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-link icon-button card-action" title="@(p.IsPinned ? T["unpin"] : T["pin"])" aria-label="@(p.IsPinned ? T["unpin"] : T["pin"])" @onclick="() => TogglePin(p.Id)" @onclick:stopPropagation="true"><NxtIcon Name="pin" CssClass="@(p.IsPinned ? "is-filled" : "")" /></button>
+                            <button class="btn btn-link icon-button card-action delete-project-button" title="@T["delete_project"]" aria-label="@T["delete_project"]" @onclick="() => DeleteAsync(p.Id)" @onclick:stopPropagation="true"><NxtIcon Name="trash" /></button>
                         </div>
                     </div>
                 </div>

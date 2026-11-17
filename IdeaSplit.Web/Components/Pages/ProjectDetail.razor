@@ -19,19 +19,19 @@
     }
     else
     {
-        <button class="btn btn-link icon-button back-button" title="@T["back"]" aria-label="@T["back"]" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left flip-rtl"></i></button>
+        <button class="btn btn-link icon-button back-button" title="@T["back"]" aria-label="@T["back"]" @onclick='() => Nav.NavigateTo("/")'><NxtIcon Name="arrow-left" CssClass="flip-rtl" /></button>
         @if (isEditingTitle)
         {
             <div class="project-title-row mb-3">
                 <input class="form-control" dir="auto" @bind="editTitleText" @bind:event="oninput" @onkeydown="OnTitleEditKeyDown" />
-                <button class="btn btn-outline-primary icon-button" title="@T["save"]" aria-label="@T["save"]" @onclick="SaveTitleEdit"><i class="bi bi-check-lg"></i></button>
+                <button class="btn btn-outline-primary icon-button" title="@T["save"]" aria-label="@T["save"]" @onclick="SaveTitleEdit"><NxtIcon Name="check" /></button>
             </div>
         }
         else
         {
             <div class="project-title-row">
                 <h1 class="mb-0" dir="auto">@T.ProjectTitle(project)</h1>
-                <button class="btn btn-link icon-button" title="@T["edit_project_name"]" aria-label="@T["edit_project_name"]" @onclick="StartEditTitle"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-link icon-button" title="@T["edit_project_name"]" aria-label="@T["edit_project_name"]" @onclick="StartEditTitle"><NxtIcon Name="pencil" /></button>
             </div>
         }
         <p class="project-meta">
@@ -89,12 +89,12 @@
         }
 
         <div class="add-task-row">
-            <i class="bi bi-plus-lg add-task-glyph" aria-hidden="true"></i>
+            <NxtIcon Name="plus" CssClass="add-task-glyph" />
             <input class="add-task-input" dir="auto" placeholder="@T["add_task_placeholder"]" @bind="newTaskText" @bind:event="oninput"
                    @onkeydown="@(async e => { if (e.Key == "Enter") await AddTask(); })" />
             @if (!string.IsNullOrWhiteSpace(newTaskText))
             {
-                <button class="btn btn-primary icon-button" title="@T["add"]" aria-label="@T["add"]" @onclick="AddTask"><i class="bi bi-arrow-up"></i></button>
+                <button class="btn btn-primary icon-button" title="@T["add"]" aria-label="@T["add"]" @onclick="AddTask"><NxtIcon Name="arrow-up" /></button>
             }
         </div>
     }
@@ -117,7 +117,7 @@
                 {
                     <input class="form-control form-control-sm" dir="auto" @bind="editText" @bind:event="oninput"
                            @onkeydown="@(e => OnEditKeyDown(e, t))" />
-                    <button class="btn btn-outline-primary icon-button" title="@T["save"]" aria-label="@T["save"]" @onclick="() => SaveEdit(t)"><i class="bi bi-check-lg"></i></button>
+                    <button class="btn btn-outline-primary icon-button" title="@T["save"]" aria-label="@T["save"]" @onclick="() => SaveEdit(t)"><NxtIcon Name="check" /></button>
                 }
                 else
                 {
@@ -128,9 +128,9 @@
                             <span class="task-project">@t.ProjectName</span>
                         }
                     </div>
-                    <button class="btn btn-link icon-button task-menu-btn" title="@T["edit"]" aria-label="@T["edit"]" @onclick="() => StartEdit(t)"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-link icon-button task-menu-btn" title="@T["edit"]" aria-label="@T["edit"]" @onclick="() => StartEdit(t)"><NxtIcon Name="pencil" /></button>
                     <div class="task-menu-wrap">
-                        <button class="btn btn-link icon-button task-menu-btn" title="@T["more_options"]" aria-label="@T["more_options"]" aria-haspopup="menu" aria-expanded="@(menuFor == t.Id)" @onclick="() => ToggleMenu(t)"><i class="bi bi-three-dots-vertical"></i></button>
+                        <button class="btn btn-link icon-button task-menu-btn" title="@T["more_options"]" aria-label="@T["more_options"]" aria-haspopup="menu" aria-expanded="@(menuFor == t.Id)" @onclick="() => ToggleMenu(t)"><NxtIcon Name="more-vertical" /></button>
                         @if (menuFor == t.Id)
                         {
                             <div class="menu-backdrop" @onclick="CloseMenu"></div>
@@ -139,12 +139,12 @@
                                 {
                                     @if (!t.IsDone)
                                     {
-                                        <button type="button" role="menuitem" @onclick="() => MoveToNextDay(t)"><i class="bi bi-arrow-right-circle flip-rtl" aria-hidden="true"></i> @T["move_next_day"]</button>
+                                        <button type="button" role="menuitem" @onclick="() => MoveToNextDay(t)"><NxtIcon Name="arrow-right-circle" CssClass="flip-rtl" /> @T["move_next_day"]</button>
                                     }
-                                    <button type="button" role="menuitem" @onclick="() => DuplicateToNextDay(t)"><i class="bi bi-copy" aria-hidden="true"></i> @T["duplicate_next_day"]</button>
+                                    <button type="button" role="menuitem" @onclick="() => DuplicateToNextDay(t)"><NxtIcon Name="copy" /> @T["duplicate_next_day"]</button>
                                 }
-                                <button type="button" role="menuitem" @onclick="() => { CloseMenu(); ToggleAddSubtask(t); }"><i class="bi bi-plus-lg" aria-hidden="true"></i> @T["add_subtask"]</button>
-                                <button type="button" role="menuitem" class="is-danger" @onclick="async () => { CloseMenu(); await DeleteTask(t); }"><i class="bi bi-trash" aria-hidden="true"></i> @T["delete"]</button>
+                                <button type="button" role="menuitem" @onclick="() => { CloseMenu(); ToggleAddSubtask(t); }"><NxtIcon Name="plus" /> @T["add_subtask"]</button>
+                                <button type="button" role="menuitem" class="is-danger" @onclick="async () => { CloseMenu(); await DeleteTask(t); }"><NxtIcon Name="trash" /> @T["delete"]</button>
                             </div>
                         }
                     </div>
@@ -160,19 +160,19 @@
                     {
                         <input class="form-control form-control-sm" dir="auto" @bind="editText" @bind:event="oninput"
                                @onkeydown="@(e => OnEditKeyDown(e, sub))" />
-                        <button class="btn btn-outline-primary icon-button" title="@T["save"]" aria-label="@T["save"]" @onclick="() => SaveEdit(sub)"><i class="bi bi-check-lg"></i></button>
+                        <button class="btn btn-outline-primary icon-button" title="@T["save"]" aria-label="@T["save"]" @onclick="() => SaveEdit(sub)"><NxtIcon Name="check" /></button>
                     }
                     else
                     {
                         <span class="task-title @(sub.IsDone ? "task-complete" : "") @(ContainsArabic(sub.Title) ? "arabic-text" : "")">@sub.Title</span>
-                        <button class="btn btn-link icon-button task-menu-btn" title="@T["edit"]" aria-label="@T["edit"]" @onclick="() => StartEdit(sub)"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-link icon-button task-menu-btn" title="@T["edit"]" aria-label="@T["edit"]" @onclick="() => StartEdit(sub)"><NxtIcon Name="pencil" /></button>
                         <div class="task-menu-wrap">
-                            <button class="btn btn-link icon-button task-menu-btn" title="@T["more_options"]" aria-label="@T["more_options"]" aria-haspopup="menu" aria-expanded="@(menuFor == sub.Id)" @onclick="() => ToggleMenu(sub)"><i class="bi bi-three-dots-vertical"></i></button>
+                            <button class="btn btn-link icon-button task-menu-btn" title="@T["more_options"]" aria-label="@T["more_options"]" aria-haspopup="menu" aria-expanded="@(menuFor == sub.Id)" @onclick="() => ToggleMenu(sub)"><NxtIcon Name="more-vertical" /></button>
                             @if (menuFor == sub.Id)
                             {
                                 <div class="menu-backdrop" @onclick="CloseMenu"></div>
                                 <div class="task-menu" role="menu">
-                                    <button type="button" role="menuitem" class="is-danger" @onclick="async () => { CloseMenu(); await DeleteTask(sub); }"><i class="bi bi-trash" aria-hidden="true"></i> @T["delete"]</button>
+                                    <button type="button" role="menuitem" class="is-danger" @onclick="async () => { CloseMenu(); await DeleteTask(sub); }"><NxtIcon Name="trash" /> @T["delete"]</button>
                                 </div>
                             }
                         </div>
@@ -185,7 +185,7 @@
                 <div class="add-subtask-row">
                     <input class="form-control form-control-sm" dir="auto" placeholder="@T["add_subtask_placeholder"]" @bind="newSubtaskText" @bind:event="oninput"
                            @onkeydown="@(async e => { if (e.Key == "Enter") await AddSubtask(t); })" />
-                    <button class="btn btn-outline-primary icon-button" title="@T["add_subtask"]" aria-label="@T["add_subtask"]" @onclick="() => AddSubtask(t)"><i class="bi bi-plus-lg"></i></button>
+                    <button class="btn btn-outline-primary icon-button" title="@T["add_subtask"]" aria-label="@T["add_subtask"]" @onclick="() => AddSubtask(t)"><NxtIcon Name="plus" /></button>
                 </div>
             }
         </div>;

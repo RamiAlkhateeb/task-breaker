@@ -5,7 +5,7 @@
 @inject NavigationManager Nav
 
 <div class="page-container">
-    <button class="btn btn-link icon-button back-button" title="@T["back"]" aria-label="@T["back"]" @onclick='() => Nav.NavigateTo("/")'><i class="bi bi-arrow-left flip-rtl"></i></button>
+    <button class="btn btn-link icon-button back-button" title="@T["back"]" aria-label="@T["back"]" @onclick='() => Nav.NavigateTo("/")'><NxtIcon Name="arrow-left" CssClass="flip-rtl" /></button>
     <h1>@T["archive"]</h1>
 
     @if (projects is null)
@@ -43,7 +43,7 @@
                             @foreach (var t in p.Tasks.Where(x => x.ParentTaskId is null).OrderBy(x => x.SortOrder))
                             {
                                 <li>
-                                    <i class="bi @(t.IsDone ? "bi-check-circle-fill is-done" : "bi-circle")" aria-hidden="true"></i>
+                                    <NxtIcon Name="@(t.IsDone ? "check-circle" : "circle")" CssClass="@(t.IsDone ? "is-done" : "")" />
                                     <div class="task-main">
                                         <span class="task-title @(t.IsDone ? "task-complete" : "")" dir="auto">@t.Title</span>
                                         @if (!string.IsNullOrWhiteSpace(t.ProjectName))
@@ -52,7 +52,7 @@
                                         }
                                         @foreach (var sub in p.Tasks.Where(x => x.ParentTaskId == t.Id).OrderBy(x => x.SortOrder))
                                         {
-                                            <span class="archive-subtask @(sub.IsDone ? "task-complete" : "")" dir="auto"><i class="bi @(sub.IsDone ? "bi-check-circle-fill is-done" : "bi-circle")" aria-hidden="true"></i> @sub.Title</span>
+                                            <span class="archive-subtask @(sub.IsDone ? "task-complete" : "")" dir="auto"><NxtIcon Name="@(sub.IsDone ? "check-circle" : "circle")" CssClass="@(sub.IsDone ? "is-done" : "")" /> @sub.Title</span>
                                         }
                                     </div>
                                 </li>
@@ -65,8 +65,8 @@
                     }
                     <div class="project-card-footer">
                         <div class="project-card-actions">
-                            <button class="btn btn-link icon-button card-action" title="@(expanded.Contains(p.Id) ? T["hide_tasks"] : T["view_tasks"])" aria-label="@(expanded.Contains(p.Id) ? T["hide_tasks"] : T["view_tasks"])" @onclick="() => Toggle(p.Id)" @onclick:stopPropagation="true"><i class="bi @(expanded.Contains(p.Id) ? "bi-chevron-up" : "bi-chevron-down")"></i></button>
-                            <button class="btn btn-link icon-button card-action" title="@T["unarchive"]" aria-label="@T["unarchive"]" @onclick="() => Unarchive(p.Id)" @onclick:stopPropagation="true"><i class="bi bi-box-arrow-up"></i></button>
+                            <button class="btn btn-link icon-button card-action" title="@(expanded.Contains(p.Id) ? T["hide_tasks"] : T["view_tasks"])" aria-label="@(expanded.Contains(p.Id) ? T["hide_tasks"] : T["view_tasks"])" @onclick="() => Toggle(p.Id)" @onclick:stopPropagation="true"><NxtIcon Name="@(expanded.Contains(p.Id) ? "chevron-up" : "chevron-down")" /></button>
+                            <button class="btn btn-link icon-button card-action" title="@T["unarchive"]" aria-label="@T["unarchive"]" @onclick="() => Unarchive(p.Id)" @onclick:stopPropagation="true"><NxtIcon Name="archive-restore" /></button>
                         </div>
                     </div>
                 </div>
