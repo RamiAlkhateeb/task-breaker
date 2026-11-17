@@ -299,3 +299,47 @@ textarea.form-control { min-height: 120px; }
 .account-status, .account-hint { margin: 0; font-size: 14px; color: var(--nxt-text-2); display: flex; gap: 8px; align-items: center; }
 .account-status-error { color: var(--nxt-danger); }
 .account-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---- Today (Home) ---- */
+.today-section { margin-bottom: 24px; }
+.section-head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
+.section-head h2 { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 1.2rem; font-weight: 800; }
+.section-head h2 .nxt-icon { color: var(--color-primary); }
+.section-count { color: var(--color-text-secondary); font-size: .88rem; }
+.section-link { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 2px; font-size: .9rem; font-weight: 700; text-decoration: none; min-height: 44px; }
+.today-empty { margin: 4px 0 0; color: var(--color-text-secondary); }
+.today-done { animation: today-pop .35s ease; }
+@keyframes today-pop { from { transform: scale(.96); opacity: 0; } }
+.today-task { color: inherit; text-decoration: none; min-height: 32px; justify-content: center; }
+.today-task:hover { color: inherit; }
+.subtask-count { margin-inline-start: 6px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--color-page); font-weight: 700; }
+.list-heading { margin: 8px 0 12px; font-size: 1.2rem; font-weight: 800; }
+.carryover-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 18px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--color-primary-light); color: var(--color-text-main); font-weight: 600; }
+.carryover-banner > span { flex: 1 1 200px; }
+.carryover-actions { display: flex; gap: 4px; }
+.carryover-actions .btn { min-height: 40px; }
+
+/* ---- Swipe a task row (touch) ---- */
+.swipe-row { position: relative; border-radius: var(--radius-sm); }
+.swipe-row[data-swiping]:not([data-swiping=""]) { overflow: hidden; }
+.swipe-row[data-swiping="right"] { background: var(--color-success); }
+.swipe-row[data-swiping="left"] { background: #4f7cf0; }
+.swipe-row[data-swiping]::before { position: absolute; inset-block: 0; display: flex; align-items: center; padding-inline: 18px; color: #fff; font-weight: 800; font-size: .9rem; opacity: .75; }
+.swipe-row[data-swiping="right"]::before { content: attr(data-label-right); left: 0; }
+.swipe-row[data-swiping="left"]::before { content: attr(data-label-left); right: 0; }
+.swipe-row.swipe-ready::before { opacity: 1; }
+.swipe-surface { position: relative; background: var(--color-card-bg); }
+.task-row.swipe-surface { margin: 0; }
+.task-row input[type="checkbox"]:checked { animation: check-pop .25s ease; }
+@keyframes check-pop { 50% { transform: scale(1.18); } }
+
+/* ---- Sync state on Home ---- */
+.sync-indicator { color: var(--color-success); }
+.sync-indicator.is-error { color: var(--color-danger); }
+.sync-indicator.is-syncing { color: var(--color-text-secondary); }
+.sync-indicator.is-syncing .nxt-icon { animation: nxt-spin 1s linear infinite; }
+
+/* The page title receives focus after navigation (for screen readers); don't draw a box around it. */
+h1:focus { outline: none; }
+/* On pages with the plan box, toasts sit above it instead of covering it. */
+body:has(.composer) .nxt-toast { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }

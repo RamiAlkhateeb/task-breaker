@@ -3,8 +3,11 @@
 @using IdeaSplit.Shared.Models
 @inject IProjectStore ProjectStore
 @inject NavigationManager Nav
+@inject IdeaSplit.Web.Services.UndoService Undo
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
-<div class="page-container">
+<div class="page-container" @ref="container">
     @if (project is null)
     {
         <div class="loading-stack" aria-label="@T["loading_project"]" role="status">
@@ -63,7 +66,10 @@
             }
 
             <div class="task-group" @key="t">
-                <div class="task-row">
+                <div class="swipe-row" data-swipe-id="@(editingId == t.Id ? null : t.Id.ToString())" data-swipe-right=""
+                     data-swipe-left="@(project.ScheduleType == TaskScheduleType.DayWeek && !t.IsDone ? "" : null)"
+                     data-label-right="@(t.IsDone ? T["swipe_reopen"] : T["swipe_done"])" data-label-left="@T["swipe_next_day"]">
+                <div class="task-row swipe-surface">
                     <input type="checkbox" checked="@t.IsDone" @onchange="() => ToggleTask(t)" aria-label="@T["mark_done"]" />
                     @if (editingId == t.Id)
                     {
@@ -101,6 +107,7 @@
                             }
                         </div>
                     }
+                </div>
                 </div>
 
                 @foreach (var sub in project.Tasks.Where(c => c.ParentTaskId == t.Id).OrderBy(c => c.IsDone).ThenBy(c => c.SortOrder))
@@ -164,6 +171,8 @@
     [SupplyParameterFromQuery(Name = "model")] public string? UsedModel { get; set; }
 
     private Project? project;
+    private ElementReference container;
+    private DotNetObjectReference<ProjectDetail>? self;
     private Guid? editingId;
     private string editText = "";
     private bool isEditingTitle;
@@ -183,6 +192,30 @@
 
     protected override async Task OnInitializedAsync() => await Load();
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        self = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("nxtTaskSwipe.attach", container, self);
+    }
+
+    [JSInvokable]
+    public async Task OnSwipe(string id, string direction)
+    {
+        var task = project?.Tasks.FirstOrDefault(candidate => candidate.Id.ToString() == id);
+        if (task is null) return;
+        if (direction == "right") await ToggleTask(task);
+        else if (!task.IsDone) await MoveToNextDay(task);
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("nxtTaskSwipe.detach", container); }
+        catch (JSDisconnectedException) { }
+        self?.Dispose();
+    }
+
     private async Task Load()
     {
         project = await ProjectStore.GetProjectAsync(ProjectId);
@@ -190,13 +223,17 @@
 
     private async Task ToggleTask(TaskItem t)
     {
+        if (project is null) return;
+        var checkpoint = await Undo.CheckpointAsync();
         t.IsDone = !t.IsDone;
-        if (project is not null)
+        project.UpdateArchivedState();
+        await ProjectStore.SaveProjectAsync(project);
+        if (t.IsDone)
         {
-            project.IsArchived = project.TotalCount > 0 && project.DoneCount == project.TotalCount;
-            await ProjectStore.SaveProjectAsync(project);
-            await Load();
+            await JS.InvokeVoidAsync("nxtTaskSwipe.tick");
+            await checkpoint.OfferAsync(T.F("task_done_toast", t.Title));
         }
+        await Load();
     }
 
     private void ToggleMenu(TaskItem t) => menuFor = menuFor == t.Id ? null : t.Id;
@@ -232,17 +269,9 @@
     {
         menuFor = null;
         if (project is null) return;
-        var target = await ProjectStore.GetOrCreateDayProjectAsync((project.ScheduleDate ?? DateTime.Today).Date.AddDays(1));
-
-        var moving = project.Tasks.Where(x => x.Id == t.Id || x.ParentTaskId == t.Id).ToList();
-        project.Tasks.RemoveAll(x => x.Id == t.Id || x.ParentTaskId == t.Id);
-        t.SortOrder = target.Tasks.Count(x => x.ParentTaskId is null);
-        target.Tasks.AddRange(moving);
-        target.IsArchived = false;
-        await ProjectStore.SaveProjectAsync(target);
-
-        project.IsArchived = project.TotalCount > 0 && project.DoneCount == project.TotalCount;
-        await ProjectStore.SaveProjectAsync(project);
+        var checkpoint = await Undo.CheckpointAsync();
+        await ProjectStore.MoveTasksToDayAsync(project, [t], (project.ScheduleDate ?? DateTime.Today).Date.AddDays(1));
+        await checkpoint.OfferAsync(T["moved_to_next_day"]);
         await Load();
     }
 
@@ -289,8 +318,11 @@
 
     private async Task DeleteTask(TaskItem t)
     {
-        project?.Tasks.RemoveAll(x => x.Id == t.Id || x.ParentTaskId == t.Id);
-        if (project is not null) await ProjectStore.SaveProjectAsync(project);
+        if (project is null) return;
+        var checkpoint = await Undo.CheckpointAsync();
+        project.Tasks.RemoveAll(x => x.Id == t.Id || x.ParentTaskId == t.Id);
+        await ProjectStore.SaveProjectAsync(project);
+        await checkpoint.OfferAsync(T["task_deleted"]);
     }
 
     private async Task AddTask()

@@ -1,0 +1,31 @@
+@using IdeaSplit.Shared.Sync
+@implements IDisposable
+@inject SupabaseAuth Auth
+@inject SupabaseSync Sync
+
+@* Sync state at a glance on Home; opens Settings, where the details are. Hidden when not signed in. *@
+@if (Auth.IsSignedIn)
+{
+    var (icon, label, css) = Sync.IsSyncing ? ("refresh", T["syncing"], "is-syncing")
+        : Sync.LastError is not null ? ("cloud-off", T["sync_problem"], "is-error")
+        : ("cloud-check", T["sync_ok"], "");
+    <NxtIconButton Label="@label" Href="settings" CssClass="@($"sync-indicator {css}")">
+        <NxtIcon Name="@icon" />
+    </NxtIconButton>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        Auth.Changed += Refresh;
+        Sync.StatusChanged += Refresh;
+    }
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Auth.Changed -= Refresh;
+        Sync.StatusChanged -= Refresh;
+    }
+}

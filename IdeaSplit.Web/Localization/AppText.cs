@@ -181,7 +181,27 @@ public sealed class AppText
             ["sign_out"] = "Sign out",
             ["confirm_sign_out"] = "Sign out? Your projects stay in your account and are removed from this device.",
             ["confirm_sign_out_unsynced"] = "Some changes couldn't be uploaded and will be lost. Sign out anyway?",
-            ["signed_out"] = "Signed out."
+            ["signed_out"] = "Signed out.",
+            ["today_empty"] = "Nothing planned for today. Add a task in the box below.",
+            ["today_all_done"] = "Today is done 🎉",
+            ["open_day"] = "Open day",
+            ["undo"] = "Undo",
+            ["task_done_toast"] = "Done: {0}",
+            ["task_deleted"] = "Task deleted",
+            ["project_deleted"] = "Project deleted",
+            ["moved_to_tomorrow"] = "Moved to tomorrow",
+            ["moved_to_next_day"] = "Moved to the next day",
+            ["moved_to_today"] = "Moved {0} to today",
+            ["carryover_title"] = "{0} left unfinished on earlier days.",
+            ["carryover_move"] = "Move to today",
+            ["carryover_dismiss"] = "Not now",
+            ["swipe_done"] = "Done",
+            ["swipe_reopen"] = "Reopen",
+            ["swipe_tomorrow"] = "Tomorrow",
+            ["swipe_next_day"] = "Next day",
+            ["sync_ok"] = "Synced",
+            ["sync_problem"] = "Sync problem",
+            ["projects_heading"] = "Projects"
         },
         ["ar"] = new()
         {
@@ -292,7 +312,27 @@ public sealed class AppText
             ["sign_out"] = "تسجيل الخروج",
             ["confirm_sign_out"] = "تسجيل الخروج؟ تبقى مشاريعك في حسابك وتُزال من هذا الجهاز.",
             ["confirm_sign_out_unsynced"] = "تعذّر رفع بعض التغييرات وستُفقد. هل تريد تسجيل الخروج على أي حال؟",
-            ["signed_out"] = "تم تسجيل الخروج."
+            ["signed_out"] = "تم تسجيل الخروج.",
+            ["today_empty"] = "لا شيء مخطط لليوم. أضف مهمة من المربع بالأسفل.",
+            ["today_all_done"] = "أنجزت مهام اليوم 🎉",
+            ["open_day"] = "فتح اليوم",
+            ["undo"] = "تراجع",
+            ["task_done_toast"] = "تم: {0}",
+            ["task_deleted"] = "حُذفت المهمة",
+            ["project_deleted"] = "حُذف المشروع",
+            ["moved_to_tomorrow"] = "نُقلت إلى الغد",
+            ["moved_to_next_day"] = "نُقلت إلى اليوم التالي",
+            ["moved_to_today"] = "نُقلت {0} إلى اليوم",
+            ["carryover_title"] = "بقيت {0} دون إنجاز من أيام سابقة.",
+            ["carryover_move"] = "نقل إلى اليوم",
+            ["carryover_dismiss"] = "ليس الآن",
+            ["swipe_done"] = "تم",
+            ["swipe_reopen"] = "إعادة فتح",
+            ["swipe_tomorrow"] = "غدًا",
+            ["swipe_next_day"] = "اليوم التالي",
+            ["sync_ok"] = "تمت المزامنة",
+            ["sync_problem"] = "مشكلة في المزامنة",
+            ["projects_heading"] = "المشاريع"
         }
     };
 }

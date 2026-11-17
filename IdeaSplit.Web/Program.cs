@@ -22,6 +22,7 @@ builder.Services.AddSingleton(new SupabaseConfig(
     builder.Configuration["Supabase:PublishableKey"] ?? ""));
 builder.Services.AddScoped<SupabaseAuth>();
 builder.Services.AddScoped<SupabaseSync>();
+builder.Services.AddScoped<IdeaSplit.Web.Services.UndoService>();
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<GeminiService>();
 builder.Services.AddScoped(_ => new HttpClient

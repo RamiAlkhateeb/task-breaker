@@ -1,0 +1,191 @@
+@using Blazored.LocalStorage
+@using IdeaSplit.Shared.Data
+@using IdeaSplit.Shared.Models
+@using IdeaSplit.Web.Services
+@implements IAsyncDisposable
+@inject IProjectStore ProjectStore
+@inject UndoService Undo
+@inject ILocalStorageService Storage
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@* Today's tasks from every day project, ticked off right here, plus an offer to bring forward unfinished ones. *@
+<section class="today-section" @ref="container" aria-labelledby="today-heading">
+    @if (overdue.Count > 0 && !carryOverDismissed)
+    {
+        <div class="carryover-banner" role="status">
+            <span>@T.F("carryover_title", T.Tasks(overdue.Sum(entry => entry.Tasks.Count)))</span>
+            <div class="carryover-actions">
+                <button type="button" class="btn btn-primary btn-sm" @onclick="MoveOverdueToTodayAsync">@T["carryover_move"]</button>
+                <button type="button" class="btn btn-link btn-sm" @onclick="DismissCarryOverAsync">@T["carryover_dismiss"]</button>
+            </div>
+        </div>
+    }
+
+    <div class="section-head">
+        <h2 id="today-heading"><NxtIcon Name="sun" /> @T["today"]</h2>
+        @if (total > 0) { <span class="section-count">@T.F("done_of", total - open.Count, total)</span> }
+        @if (dayProject is not null)
+        {
+            <a class="section-link" href="@($"project/{dayProject.Id}")">@T["open_day"]<NxtIcon Name="chevron-right" CssClass="flip-rtl" /></a>
+        }
+    </div>
+
+    @if (total == 0)
+    {
+        <p class="today-empty">@T["today_empty"]</p>
+    }
+    else if (open.Count == 0)
+    {
+        <p class="all-done today-done">@T["today_all_done"]</p>
+    }
+
+    @foreach (var (project, task) in open)
+    {
+        <div class="swipe-row" @key="task.Id" data-swipe-id="@task.Id" data-swipe-right="" data-swipe-left=""
+             data-label-right="@T["swipe_done"]" data-label-left="@T["swipe_tomorrow"]">
+            <div class="swipe-surface task-row today-row">
+                <input type="checkbox" checked="@task.IsDone" @onchange="() => ToggleAsync(project, task)" aria-label="@T["mark_done"]" />
+                <a class="task-main today-task" href="@($"project/{project.Id}")">
+                    <span class="task-title" dir="auto">@task.Title</span>
+                    @{ var subtasks = project.Tasks.Where(sub => sub.ParentTaskId == task.Id).ToList(); }
+                    @if (!string.IsNullOrWhiteSpace(task.ProjectName) || subtasks.Count > 0)
+                    {
+                        <span class="task-project">
+                            @task.ProjectName
+                            @if (subtasks.Count > 0) { <span class="subtask-count">@($"{subtasks.Count(sub => sub.IsDone)}/{subtasks.Count}")</span> }
+                        </span>
+                    }
+                </a>
+            </div>
+        </div>
+    }
+
+    @if (done.Count > 0)
+    {
+        <button type="button" class="completed-toggle" @onclick="() => showDone = !showDone">
+            <NxtIcon Name="@(showDone ? "chevron-down" : "chevron-right")" CssClass="flip-rtl" /> @T.F("completed", done.Count)
+        </button>
+        @if (showDone)
+        {
+            @foreach (var (project, task) in done)
+            {
+                <div class="task-row today-row" @key="task.Id">
+                    <input type="checkbox" checked="@task.IsDone" @onchange="() => ToggleAsync(project, task)" aria-label="@T["mark_done"]" />
+                    <span class="task-title task-complete" dir="auto">@task.Title</span>
+                </div>
+            }
+        }
+    }
+</section>
+
+@code {
+    private const string DismissedKey = "nxt.task.carryover_dismissed";
+
+    /// <summary>All projects, archived ones included (a finished day is archived but still today).</summary>
+    [Parameter, EditorRequired] public List<Project> Projects { get; set; } = [];
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private ElementReference container;
+    private DotNetObjectReference<TodaySection>? self;
+    private Project? dayProject;
+    private List<(Project Project, TaskItem Task)> open = [];
+    private List<(Project Project, TaskItem Task)> done = [];
+    private List<(Project Project, List<TaskItem> Tasks)> overdue = [];
+    private int total;
+    private bool showDone;
+    private bool carryOverDismissed = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { carryOverDismissed = await Storage.GetItemAsync<string>(DismissedKey) == DateTime.Today.ToString("yyyy-MM-dd"); }
+        catch (System.Text.Json.JsonException) { carryOverDismissed = false; }
+    }
+
+    protected override void OnParametersSet()
+    {
+        var days = Projects.Where(project => IsDay(project) && project.ScheduleDate!.Value.Date == DateTime.Today).OrderBy(project => project.CreatedAt).ToList();
+        dayProject = days.FirstOrDefault();
+        var tasks = days.SelectMany(project => project.Tasks.Where(task => task.ParentTaskId is null).OrderBy(task => task.SortOrder).Select(task => (project, task))).ToList();
+        open = tasks.Where(entry => !entry.task.IsDone).ToList();
+        done = tasks.Where(entry => entry.task.IsDone).ToList();
+        total = tasks.Count;
+
+        overdue = Projects
+            .Where(project => IsDay(project) && !project.IsArchived && project.ScheduleDate!.Value.Date < DateTime.Today)
+            .Select(project => (project, project.Tasks.Where(task => task.ParentTaskId is null && !task.IsDone).ToList()))
+            .Where(entry => entry.Item2.Count > 0)
+            .ToList();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        self = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("nxtTaskSwipe.attach", container, self);
+    }
+
+    private static bool IsDay(Project project) => project.ScheduleType == TaskScheduleType.DayWeek && project.ScheduleDate is not null;
+
+    private async Task ToggleAsync(Project project, TaskItem task)
+    {
+        var checkpoint = await Undo.CheckpointAsync();
+        var fresh = await ProjectStore.GetProjectAsync(project.Id);
+        var item = fresh?.Tasks.FirstOrDefault(candidate => candidate.Id == task.Id);
+        if (fresh is null || item is null) return;
+        item.IsDone = !item.IsDone;
+        fresh.UpdateArchivedState();
+        await ProjectStore.SaveProjectAsync(fresh);
+        if (item.IsDone)
+        {
+            await JS.InvokeVoidAsync("nxtTaskSwipe.tick");
+            await checkpoint.OfferAsync(T.F("task_done_toast", item.Title));
+        }
+        await OnChanged.InvokeAsync();
+    }
+
+    [JSInvokable]
+    public async Task OnSwipe(string id, string direction)
+    {
+        var entry = open.FirstOrDefault(candidate => candidate.Task.Id.ToString() == id);
+        if (entry.Task is null) return;
+        if (direction == "right") { await ToggleAsync(entry.Project, entry.Task); return; }
+
+        var checkpoint = await Undo.CheckpointAsync();
+        var fresh = await ProjectStore.GetProjectAsync(entry.Project.Id);
+        if (fresh is null) return;
+        await ProjectStore.MoveTasksToDayAsync(fresh, fresh.Tasks.Where(task => task.Id == entry.Task.Id), DateTime.Today.AddDays(1));
+        await checkpoint.OfferAsync(T["moved_to_tomorrow"]);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task MoveOverdueToTodayAsync()
+    {
+        var checkpoint = await Undo.CheckpointAsync();
+        var count = 0;
+        foreach (var (project, tasks) in overdue)
+        {
+            var fresh = await ProjectStore.GetProjectAsync(project.Id);
+            if (fresh is null) continue;
+            var ids = tasks.Select(task => task.Id).ToHashSet();
+            var moving = fresh.Tasks.Where(task => ids.Contains(task.Id) && !task.IsDone).ToList();
+            count += moving.Count;
+            await ProjectStore.MoveTasksToDayAsync(fresh, moving, DateTime.Today);
+        }
+        await checkpoint.OfferAsync(T.F("moved_to_today", T.Tasks(count)));
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task DismissCarryOverAsync()
+    {
+        carryOverDismissed = true;
+        await Storage.SetItemAsync(DismissedKey, DateTime.Today.ToString("yyyy-MM-dd"));
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("nxtTaskSwipe.detach", container); }
+        catch (JSDisconnectedException) { }
+        self?.Dispose();
+    }
+}

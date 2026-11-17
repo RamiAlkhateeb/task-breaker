@@ -2,7 +2,7 @@
 @using IdeaSplit.Shared.Data
 @inject IProjectStore ProjectStore
 @inject NavigationManager Nav
-@inject IJSRuntime JS
+@inject IdeaSplit.Web.Services.UndoService Undo
 
 <PageTitle>NxtTask</PageTitle>
 
@@ -10,6 +10,7 @@
     <div class="page-header">
         <div><h1>NxtTask</h1>@if (projects is { Count: > 0 }) {<p class="page-subtitle">@T.OpenProjects(projects.Count)</p>}</div>
         <div class="header-actions">
+            <SyncIndicator />
             <NxtIconButton Label="@T["assistant"]" Href="ai" Accent="true">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
             </NxtIconButton>
@@ -22,7 +23,7 @@
         </div>
     </div>
 
-    @if (projects is { Count: > 0 })
+    @if (allProjects is { Count: > 0 })
     {
         <div class="search-box">
             <i class="bi bi-search" aria-hidden="true"></i>
@@ -43,7 +44,7 @@
             <span class="visually-hidden">@T["loading_projects"]</span>
         </div>
     }
-    else if (projects.Count == 0)
+    else if (allProjects!.Count == 0)
     {
         <div class="empty-state">
             <svg class="empty-state-art" viewBox="0 0 200 160" role="img" aria-label="@T["empty_art"]">
@@ -58,12 +59,17 @@
             <p>@T["no_projects_hint"]</p>
         </div>
     }
-    else if (Filtered.Count == 0)
+    else if (HasQuery && Filtered.Count == 0)
     {
         <p class="no-results">@T.F("no_matches", query.Trim())</p>
     }
     else
     {
+        @if (!HasQuery)
+        {
+            <TodaySection Projects="allProjects" OnChanged="LoadProjects" />
+            @if (projects.Count > 0) { <h2 class="list-heading">@T["projects_heading"]</h2> }
+        }
         @foreach (var p in Filtered)
         {
             <div class="card project-card" style="@CardAccent(p)" @onclick='() => Nav.NavigateTo($"/project/{p.Id}")'>
@@ -92,7 +98,7 @@
                     <div class="project-card-footer">
                         <div class="project-card-actions">
                             <button class="btn btn-link icon-button card-action" title="@(p.IsPinned ? T["unpin"] : T["pin"])" aria-label="@(p.IsPinned ? T["unpin"] : T["pin"])" @onclick="() => TogglePin(p.Id)" @onclick:stopPropagation="true"><i class="bi @(p.IsPinned ? "bi-pin-angle-fill" : "bi-pin-angle")"></i></button>
-                            <button class="btn btn-link icon-button card-action delete-project-button" title="@T["delete_project"]" aria-label="@T["delete_project"]" @onclick="() => ConfirmDelete(p.Id)" @onclick:stopPropagation="true"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-link icon-button card-action delete-project-button" title="@T["delete_project"]" aria-label="@T["delete_project"]" @onclick="() => DeleteAsync(p.Id)" @onclick:stopPropagation="true"><i class="bi bi-trash"></i></button>
                         </div>
                     </div>
                 </div>
@@ -104,6 +110,7 @@
 <PlanComposer OnCreated="LoadProjects" />
 
 @code {
+    private List<IdeaSplit.Shared.Models.Project>? allProjects;
     private List<IdeaSplit.Shared.Models.Project>? projects;
     private string query = "";
 
@@ -112,7 +119,7 @@
     private List<IdeaSplit.Shared.Models.Project> Filtered =>
         projects is null || !HasQuery
             ? projects ?? []
-            : projects.Where(project => Matches(project.Title) || Matches(T.ProjectTitle(project)) || TaskHits(project).Count > 0).ToList();
+            : allProjects!.Where(project => !project.IsArchived).Where(project => Matches(project.Title) || Matches(T.ProjectTitle(project)) || TaskHits(project).Count > 0).ToList();
 
     private bool Matches(string? value) =>
         value is not null && value.Contains(query.Trim(), StringComparison.OrdinalIgnoreCase);
@@ -125,13 +132,18 @@
         await LoadProjects();
     }
 
-    private async Task LoadProjects() =>
-        projects = (await ProjectStore.GetProjectsAsync())
+    private async Task LoadProjects()
+    {
+        allProjects = await ProjectStore.GetProjectsAsync();
+        // Today's day project is shown as the Today list, not as a card.
+        projects = allProjects
             .Where(project => !project.IsArchived)
+            .Where(project => !(project.ScheduleType == IdeaSplit.Shared.Models.TaskScheduleType.DayWeek && project.ScheduleDate?.Date == DateTime.Today))
             .OrderByDescending(project => project.IsPinned)
             .ThenBy(project => project.ScheduleDate ?? DateTime.MaxValue)
             .ThenByDescending(project => project.CreatedAt)
             .ToList();
+    }
 
     private async Task TogglePin(Guid projectId)
     {
@@ -139,13 +151,12 @@
         await LoadProjects();
     }
 
-    private async Task ConfirmDelete(Guid projectId)
+    private async Task DeleteAsync(Guid projectId)
     {
-        if (await JS.InvokeAsync<bool>("confirm", T["confirm_delete_project"]))
-        {
-            await ProjectStore.DeleteProjectAsync(projectId);
-            await LoadProjects();
-        }
+        var checkpoint = await Undo.CheckpointAsync();
+        await ProjectStore.DeleteProjectAsync(projectId);
+        await checkpoint.OfferAsync(T["project_deleted"]);
+        await LoadProjects();
     }
 
     private static string CardAccent(IdeaSplit.Shared.Models.Project project)
