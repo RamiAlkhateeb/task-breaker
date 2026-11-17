@@ -73,6 +73,37 @@ public sealed class SupabaseAuth
         catch (HttpRequestException) { return NetworkError; }
     }
 
+    /// <summary>Emails a link to choose a new password. Returns an error message, or null on success.</summary>
+    public async Task<string?> SendPasswordResetAsync(string email, string redirectTo)
+    {
+        try
+        {
+            var url = $"{_config.BaseUrl}/auth/v1/recover?redirect_to={Uri.EscapeDataString(redirectTo)}";
+            using var response = await SendAsync(HttpMethod.Post, url, new { email = email.Trim() }, bearer: null);
+            return response.IsSuccessStatusCode ? null : await ErrorMessageAsync(response);
+        }
+        catch (HttpRequestException) { return NetworkError; }
+    }
+
+    /// <summary>Sets a new password for the signed-in user. Returns an error message, or null on success.</summary>
+    public async Task<string?> UpdatePasswordAsync(string password)
+    {
+        var token = await GetAccessTokenAsync();
+        if (token is null) return NetworkError;
+        try
+        {
+            using var response = await SendAsync(HttpMethod.Put, $"{_config.BaseUrl}/auth/v1/user", new { password }, token);
+            if (!response.IsSuccessStatusCode) return await ErrorMessageAsync(response);
+            PasswordResetPending = false;
+            Changed?.Invoke();
+            return null;
+        }
+        catch (HttpRequestException) { return NetworkError; }
+    }
+
+    /// <summary>True after opening a password-reset link, until a new password is saved.</summary>
+    public bool PasswordResetPending { get; private set; }
+
     /// <summary>
     /// Handles the URL fragment Supabase adds when the user opens the magic link
     /// (<c>#access_token=…&amp;refresh_token=…</c> or <c>#error=…</c>). Returns null if the fragment wasn't ours.
@@ -83,11 +114,13 @@ public sealed class SupabaseAuth
         if (values.TryGetValue("access_token", out var access) && values.TryGetValue("refresh_token", out var refresh))
         {
             var expiresIn = values.TryGetValue("expires_in", out var seconds) && int.TryParse(seconds, out var parsed) ? parsed : 3600;
+            var recovery = values.GetValueOrDefault("type") == "recovery";
+            PasswordResetPending = recovery;
             await SetSessionAsync(access, refresh, expiresIn);
-            return new RedirectResult(true, null);
+            return new RedirectResult(true, null, recovery);
         }
         if (values.TryGetValue("error", out var error))
-            return new RedirectResult(false, values.GetValueOrDefault("error_description") ?? error);
+            return new RedirectResult(false, values.GetValueOrDefault("error_description") ?? error, false);
         return null;
     }
 
@@ -199,7 +232,7 @@ public sealed class SupabaseAuth
             .ToDictionary(group => group.Key,
                 group => Uri.UnescapeDataString((group.First().ElementAtOrDefault(1) ?? "").Replace('+', ' ')));
 
-    public sealed record RedirectResult(bool SignedIn, string? Error);
+    public sealed record RedirectResult(bool SignedIn, string? Error, bool IsPasswordReset);
 
     private sealed class TokenResponse
     {

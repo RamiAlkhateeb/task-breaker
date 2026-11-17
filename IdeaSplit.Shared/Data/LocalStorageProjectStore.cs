@@ -136,7 +136,7 @@ public class LocalStorageProjectStore : IProjectStore, ISyncStore
         finally { _lock.Release(); }
     }
 
-    public async Task<bool> ApplyRemoteAsync(IReadOnlyList<ProjectRow> remoteProjects, IReadOnlyList<TaskRow> remoteTasks)
+    public async Task<bool> ApplyRemoteAsync(IReadOnlyList<ProjectRow> remoteProjects, IReadOnlyList<TaskRow> remoteTasks, bool complete = true)
     {
         await _lock.WaitAsync();
         try
@@ -226,7 +226,8 @@ public class LocalStorageProjectStore : IProjectStore, ISyncStore
             }
 
             // Rows the server no longer has, and that aren't waiting to be uploaded, were removed elsewhere.
-            foreach (var project in projects.ToList())
+            // Only a complete download can tell.
+            foreach (var project in complete ? projects.ToList() : [])
             {
                 if (!project.IsDirty && !remoteProjectIds.Contains(project.Id)) { projects.Remove(project); visibleChange = anyChange = true; continue; }
                 if (project.Tasks.RemoveAll(task => !task.IsDirty && !remoteTaskIds.Contains(task.Id)) > 0) visibleChange = anyChange = true;

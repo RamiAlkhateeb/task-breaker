@@ -28,8 +28,12 @@ public interface ISyncStore
     /// <summary>Clears the pending state of rows that were uploaded, unless they changed again meanwhile.</summary>
     Task MarkPushedAsync(SyncSnapshot pushed);
 
-    /// <summary>Merges the server's full copy into local data; returns true if anything visible changed.</summary>
-    Task<bool> ApplyRemoteAsync(IReadOnlyList<ProjectRow> projects, IReadOnlyList<TaskRow> tasks);
+    /// <summary>
+    /// Merges rows from the server into local data; returns true if anything visible changed.
+    /// <paramref name="complete"/> says the rows are everything the server has, so local rows missing from
+    /// them were removed elsewhere; otherwise they are only the recently changed ones.
+    /// </summary>
+    Task<bool> ApplyRemoteAsync(IReadOnlyList<ProjectRow> projects, IReadOnlyList<TaskRow> tasks, bool complete = true);
 
     /// <summary>Removes all local data (used on sign-out).</summary>
     Task ClearAsync();

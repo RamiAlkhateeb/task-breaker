@@ -209,7 +209,26 @@ public sealed class AppText
             ["drag_to_reorder"] = "Drag to reorder",
             ["week_strip"] = "Next 7 days",
             ["day_empty"] = "Nothing planned for this day yet. Add the first task below.",
-            ["day_invalid"] = "That date isn't valid."
+            ["day_invalid"] = "That date isn't valid.",
+            ["forgot_password"] = "Forgot password?",
+            ["reset_sent"] = "If there's an account for {0}, we've emailed a link to choose a new password.",
+            ["choose_new_password"] = "Choose a new password for your account.",
+            ["new_password_label"] = "New password",
+            ["save_password"] = "Save password",
+            ["password_saved"] = "Password saved.",
+            ["change_password"] = "Change password",
+            ["backup_title"] = "Backup",
+            ["backup_desc"] = "Save all your projects to a file, or bring them back from one.",
+            ["backup_export"] = "Export",
+            ["backup_import"] = "Import",
+            ["backup_invalid"] = "That file isn't an NxtTask backup.",
+            ["backup_confirm"] = "Import {0} projects from this file? Projects that already exist are replaced by the file's version.",
+            ["backup_imported"] = "Imported {0} projects",
+            ["onboarding_title"] = "Welcome to NxtTask",
+            ["onboarding_plan"] = "Type a plan or a single task in the box below. Choose Task to add it as is, or Project to have it split into steps.",
+            ["onboarding_swipe"] = "Swipe a task right to finish it, or left to move it to the next day.",
+            ["onboarding_sync"] = "Sign in under Settings to keep your phone and computer in sync.",
+            ["onboarding_done"] = "Got it"
         },
         ["ar"] = new()
         {
@@ -348,7 +367,26 @@ public sealed class AppText
             ["drag_to_reorder"] = "اسحب لإعادة الترتيب",
             ["week_strip"] = "الأيام السبعة القادمة",
             ["day_empty"] = "لا شيء مخطط لهذا اليوم بعد. أضف أول مهمة بالأسفل.",
-            ["day_invalid"] = "هذا التاريخ غير صالح."
+            ["day_invalid"] = "هذا التاريخ غير صالح.",
+            ["forgot_password"] = "نسيت كلمة المرور؟",
+            ["reset_sent"] = "إذا كان هناك حساب للبريد {0} فقد أرسلنا رابطًا لاختيار كلمة مرور جديدة.",
+            ["choose_new_password"] = "اختر كلمة مرور جديدة لحسابك.",
+            ["new_password_label"] = "كلمة المرور الجديدة",
+            ["save_password"] = "حفظ كلمة المرور",
+            ["password_saved"] = "تم حفظ كلمة المرور.",
+            ["change_password"] = "تغيير كلمة المرور",
+            ["backup_title"] = "النسخ الاحتياطي",
+            ["backup_desc"] = "احفظ كل مشاريعك في ملف، أو استرجعها منه.",
+            ["backup_export"] = "تصدير",
+            ["backup_import"] = "استيراد",
+            ["backup_invalid"] = "هذا الملف ليس نسخة احتياطية من NxtTask.",
+            ["backup_confirm"] = "استيراد {0} من المشاريع من هذا الملف؟ تُستبدل المشاريع الموجودة بنسختها في الملف.",
+            ["backup_imported"] = "تم استيراد {0} من المشاريع",
+            ["onboarding_title"] = "أهلًا بك في NxtTask",
+            ["onboarding_plan"] = "اكتب خطة أو مهمة واحدة في المربع بالأسفل. اختر «مهمة» لإضافتها كما هي، أو «مشروع» لتقسيمها إلى خطوات.",
+            ["onboarding_swipe"] = "اسحب المهمة يمينًا لإنجازها، أو يسارًا لنقلها إلى اليوم التالي.",
+            ["onboarding_sync"] = "سجّل الدخول من الإعدادات لمزامنة هاتفك وحاسوبك.",
+            ["onboarding_done"] = "فهمت"
         }
     };
 }

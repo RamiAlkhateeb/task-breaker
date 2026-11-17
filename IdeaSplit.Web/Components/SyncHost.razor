@@ -25,7 +25,12 @@
             if (result is not null)
             {
                 await JS.InvokeVoidAsync("nxtTaskSync.clearHash");
-                if (result.SignedIn) Toasts.Show(T.F("signed_in_as", Auth.Session!.Email));
+                if (result.IsPasswordReset)
+                {
+                    Toasts.Show(T["choose_new_password"]);
+                    Nav.NavigateTo("settings");
+                }
+                else if (result.SignedIn) Toasts.Show(T.F("signed_in_as", Auth.Session!.Email));
                 else Toasts.Show(T.F("sign_in_failed", result.Error ?? ""), isError: true);
             }
         }

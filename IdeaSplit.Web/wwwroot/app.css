@@ -370,3 +370,15 @@ body:has(.composer) .nxt-toast { bottom: calc(86px + env(safe-area-inset-bottom,
 .schedule-type-btn .nxt-icon { width: 17px; height: 17px; }
 .search-clear .nxt-icon { width: 16px; height: 16px; }
 .archive-tasks .nxt-icon.is-done { color: var(--color-success); }
+
+/* ---- Settings extras ---- */
+.account-forgot { align-self: flex-start; padding: 0; border: 0; background: none; cursor: pointer; }
+.account-forgot:disabled { opacity: .45; cursor: not-allowed; text-decoration: none; }
+.backup-import { cursor: pointer; }
+
+/* ---- First-run tips (Home) ---- */
+.onboarding { margin: 0 0 8px; padding: 18px; border-radius: var(--radius-md); background: var(--color-primary-light); }
+.onboarding h2 { margin: 0 0 10px; font-size: 1.15rem; font-weight: 800; }
+.onboarding ol { display: grid; gap: 10px; margin: 0 0 14px; padding: 0; list-style: none; }
+.onboarding li { display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; }
+.onboarding li .nxt-icon { flex: 0 0 auto; width: 20px; height: 20px; margin-top: 2px; color: var(--color-primary); }
