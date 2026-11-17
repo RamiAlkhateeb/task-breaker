@@ -1,0 +1,24 @@
+@using IdeaSplit.Shared.Models
+
+@* The next seven days with how many tasks are still open on each; tap one to open that day. *@
+<nav class="week-strip" aria-label="@T["week_strip"]">
+    @for (var offset = 0; offset < 7; offset++)
+    {
+        var date = DateTime.Today.AddDays(offset);
+        var open = OpenOn(date);
+        <a class="week-day @(offset == 0 ? "is-today" : "")" href="@($"day/{date:yyyy-MM-dd}")"
+           aria-label="@($"{T.DayName(date)}: {T.Tasks(open)}")">
+            <span class="week-day-name">@date.ToString("ddd", System.Globalization.CultureInfo.CurrentCulture)</span>
+            <span class="week-day-number">@date.Day.ToString(System.Globalization.CultureInfo.CurrentCulture)</span>
+            <span class="week-day-count">@(open > 0 ? open.ToString(System.Globalization.CultureInfo.CurrentCulture) : "")</span>
+        </a>
+    }
+</nav>
+
+@code {
+    [Parameter, EditorRequired] public List<Project> Projects { get; set; } = [];
+
+    private int OpenOn(DateTime date) => Projects
+        .Where(project => project.ScheduleType == TaskScheduleType.DayWeek && project.ScheduleDate?.Date == date)
+        .Sum(project => project.Tasks.Count(task => task.ParentTaskId is null && !task.IsDone));
+}

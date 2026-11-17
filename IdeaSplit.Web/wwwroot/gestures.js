@@ -19,7 +19,7 @@ window.nxtTaskSwipe = (() => {
         const start = e => {
             const target = e.target;
             const candidate = target.closest("[data-swipe-id]");
-            if (!candidate || !container.contains(candidate) || target.closest("input, button, a, textarea")) return;
+            if (!candidate || !container.contains(candidate) || target.closest("input, button, a, textarea, .drag-handle")) return;
             row = candidate;
             surface = row.querySelector(".swipe-surface") || row;
             startX = e.touches[0].clientX; startY = e.touches[0].clientY; dx = 0; horizontal = null;

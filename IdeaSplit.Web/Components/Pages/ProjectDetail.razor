@@ -35,9 +35,22 @@
             </div>
         }
         <p class="project-meta">
-            <DueChip Date="project.ScheduleDate" Type="project.ScheduleType" Muted="project.IsArchived" />
+            <button type="button" class="date-edit-button" title="@T["change_date"]" aria-label="@T["change_date"]" aria-expanded="@editingDate" @onclick="() => editingDate = !editingDate">
+                @if (project.ScheduleDate is null) { <span class="task-due-badge">@T["set_date"]</span> }
+                else { <DueChip Date="project.ScheduleDate" Type="project.ScheduleType" Muted="project.IsArchived" /> }
+                <NxtIcon Name="pencil" />
+            </button>
             <span class="text-muted">@T.F("done_of", project.DoneCount, project.TotalCount)</span>
         </p>
+        @if (editingDate)
+        {
+            <div class="date-edit-row">
+                <label class="visually-hidden" for="project-date">@T["change_date"]</label>
+                <input id="project-date" type="date" class="form-control" value="@project.ScheduleDate?.ToString("yyyy-MM-dd")" @onchange="ChangeDateAsync" />
+                <button type="button" class="quick-date-chip" @onclick="() => SetDateAsync(DateTime.Today)">@T["today"]</button>
+                <button type="button" class="quick-date-chip" @onclick="() => SetDateAsync(DateTime.Today.AddDays(1))">@T["tomorrow"]</button>
+            </div>
+        }
         @if (!string.IsNullOrWhiteSpace(UsedModel))
         {
             <p class="form-hint">@T.F("generated_with", UsedModel)</p>
@@ -50,108 +63,29 @@
         var topLevel = project.Tasks.Where(x => x.ParentTaskId is null).ToList();
         var open = topLevel.Where(x => !x.IsDone).OrderBy(x => x.SortOrder).ToList();
         var done = topLevel.Where(x => x.IsDone).OrderBy(x => x.SortOrder).ToList();
-        var firstDone = done.FirstOrDefault();
-        var visible = showCompleted ? open.Concat(done).ToList() : open;
 
         @if (open.Count == 0 && done.Count > 0)
         {
             <p class="all-done">@T["all_done"]</p>
         }
 
-        @foreach (var t in visible)
-        {
-            @if (showCompleted && ReferenceEquals(t, firstDone))
+        <div class="open-tasks" @ref="openList">
+            @foreach (var t in open)
             {
-                <button type="button" class="completed-toggle" @onclick="() => showCompleted = false"><i class="bi bi-chevron-down" aria-hidden="true"></i> @T.F("completed", done.Count)</button>
+                @TaskGroup(t)
             }
+        </div>
 
-            <div class="task-group" @key="t">
-                <div class="swipe-row" data-swipe-id="@(editingId == t.Id ? null : t.Id.ToString())" data-swipe-right=""
-                     data-swipe-left="@(project.ScheduleType == TaskScheduleType.DayWeek && !t.IsDone ? "" : null)"
-                     data-label-right="@(t.IsDone ? T["swipe_reopen"] : T["swipe_done"])" data-label-left="@T["swipe_next_day"]">
-                <div class="task-row swipe-surface">
-                    <input type="checkbox" checked="@t.IsDone" @onchange="() => ToggleTask(t)" aria-label="@T["mark_done"]" />
-                    @if (editingId == t.Id)
-                    {
-                        <input class="form-control form-control-sm" dir="auto" @bind="editText" @bind:event="oninput"
-                               @onkeydown="@(e => OnEditKeyDown(e, t))" />
-                        <button class="btn btn-outline-primary icon-button" title="@T["save"]" aria-label="@T["save"]" @onclick="() => SaveEdit(t)"><i class="bi bi-check-lg"></i></button>
-                    }
-                    else
-                    {
-                        <div class="task-main">
-                            <span class="task-title @(t.IsDone ? "task-complete" : "") @(ContainsArabic(t.Title) ? "arabic-text" : "")">@t.Title</span>
-                            @if (!string.IsNullOrWhiteSpace(t.ProjectName))
-                            {
-                                <span class="task-project">@t.ProjectName</span>
-                            }
-                        </div>
-                        <button class="btn btn-link icon-button task-menu-btn" title="@T["edit"]" aria-label="@T["edit"]" @onclick="() => StartEdit(t)"><i class="bi bi-pencil"></i></button>
-                        <div class="task-menu-wrap">
-                            <button class="btn btn-link icon-button task-menu-btn" title="@T["more_options"]" aria-label="@T["more_options"]" aria-haspopup="menu" aria-expanded="@(menuFor == t.Id)" @onclick="() => ToggleMenu(t)"><i class="bi bi-three-dots-vertical"></i></button>
-                            @if (menuFor == t.Id)
-                            {
-                                <div class="menu-backdrop" @onclick="CloseMenu"></div>
-                                <div class="task-menu" role="menu">
-                                    @if (project.ScheduleType == TaskScheduleType.DayWeek)
-                                    {
-                                        @if (!t.IsDone)
-                                        {
-                                            <button type="button" role="menuitem" @onclick="() => MoveToNextDay(t)"><i class="bi bi-arrow-right-circle flip-rtl" aria-hidden="true"></i> @T["move_next_day"]</button>
-                                        }
-                                        <button type="button" role="menuitem" @onclick="() => DuplicateToNextDay(t)"><i class="bi bi-copy" aria-hidden="true"></i> @T["duplicate_next_day"]</button>
-                                    }
-                                    <button type="button" role="menuitem" @onclick="() => { CloseMenu(); ToggleAddSubtask(t); }"><i class="bi bi-plus-lg" aria-hidden="true"></i> @T["add_subtask"]</button>
-                                    <button type="button" role="menuitem" class="is-danger" @onclick="async () => { CloseMenu(); await DeleteTask(t); }"><i class="bi bi-trash" aria-hidden="true"></i> @T["delete"]</button>
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-                </div>
-
-                @foreach (var sub in project.Tasks.Where(c => c.ParentTaskId == t.Id).OrderBy(c => c.IsDone).ThenBy(c => c.SortOrder))
-                {
-                    <div class="task-row subtask-row" @key="sub">
-                        <input type="checkbox" checked="@sub.IsDone" @onchange="() => ToggleTask(sub)" aria-label="@T["mark_done"]" />
-                        @if (editingId == sub.Id)
-                        {
-                            <input class="form-control form-control-sm" dir="auto" @bind="editText" @bind:event="oninput"
-                                   @onkeydown="@(e => OnEditKeyDown(e, sub))" />
-                            <button class="btn btn-outline-primary icon-button" title="@T["save"]" aria-label="@T["save"]" @onclick="() => SaveEdit(sub)"><i class="bi bi-check-lg"></i></button>
-                        }
-                        else
-                        {
-                            <span class="task-title @(sub.IsDone ? "task-complete" : "") @(ContainsArabic(sub.Title) ? "arabic-text" : "")">@sub.Title</span>
-                            <button class="btn btn-link icon-button task-menu-btn" title="@T["edit"]" aria-label="@T["edit"]" @onclick="() => StartEdit(sub)"><i class="bi bi-pencil"></i></button>
-                            <div class="task-menu-wrap">
-                                <button class="btn btn-link icon-button task-menu-btn" title="@T["more_options"]" aria-label="@T["more_options"]" aria-haspopup="menu" aria-expanded="@(menuFor == sub.Id)" @onclick="() => ToggleMenu(sub)"><i class="bi bi-three-dots-vertical"></i></button>
-                                @if (menuFor == sub.Id)
-                                {
-                                    <div class="menu-backdrop" @onclick="CloseMenu"></div>
-                                    <div class="task-menu" role="menu">
-                                        <button type="button" role="menuitem" class="is-danger" @onclick="async () => { CloseMenu(); await DeleteTask(sub); }"><i class="bi bi-trash" aria-hidden="true"></i> @T["delete"]</button>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-                }
-
-                @if (addingSubtaskFor == t.Id)
-                {
-                    <div class="add-subtask-row">
-                        <input class="form-control form-control-sm" dir="auto" placeholder="@T["add_subtask_placeholder"]" @bind="newSubtaskText" @bind:event="oninput"
-                               @onkeydown="@(async e => { if (e.Key == "Enter") await AddSubtask(t); })" />
-                        <button class="btn btn-outline-primary icon-button" title="@T["add_subtask"]" aria-label="@T["add_subtask"]" @onclick="() => AddSubtask(t)"><i class="bi bi-plus-lg"></i></button>
-                    </div>
-                }
-            </div>
-        }
-
-        @if (!showCompleted && done.Count > 0)
+        @if (done.Count > 0)
         {
-            <button type="button" class="completed-toggle" @onclick="() => showCompleted = true"><i class="bi bi-chevron-right flip-rtl" aria-hidden="true"></i> @T.F("completed", done.Count)</button>
+            <button type="button" class="completed-toggle" @onclick="() => showCompleted = !showCompleted"><NxtIcon Name="@(showCompleted ? "chevron-down" : "chevron-right")" CssClass="flip-rtl" /> @T.F("completed", done.Count)</button>
+            @if (showCompleted)
+            {
+                @foreach (var t in done)
+                {
+                    @TaskGroup(t)
+                }
+            }
         }
 
         <div class="add-task-row">
@@ -170,8 +104,97 @@
     [Parameter] public Guid ProjectId { get; set; }
     [SupplyParameterFromQuery(Name = "model")] public string? UsedModel { get; set; }
 
+
+    /// <summary>One top-level task with its sub-tasks, menus and editors.</summary>
+    private RenderFragment TaskGroup(TaskItem t) => @<div class="task-group" @key="t" data-task-id="@t.Id">
+            <div class="swipe-row" data-swipe-id="@(editingId == t.Id ? null : t.Id.ToString())" data-swipe-right=""
+                 data-swipe-left="@(project!.ScheduleType == TaskScheduleType.DayWeek && !t.IsDone ? "" : null)"
+                 data-label-right="@(t.IsDone ? T["swipe_reopen"] : T["swipe_done"])" data-label-left="@T["swipe_next_day"]">
+            <div class="task-row swipe-surface">
+                @if (!t.IsDone) { <span class="drag-handle" title="@T["drag_to_reorder"]" aria-hidden="true"><NxtIcon Name="grip-vertical" /></span> }
+                <input type="checkbox" checked="@t.IsDone" @onchange="() => ToggleTask(t)" aria-label="@T["mark_done"]" />
+                @if (editingId == t.Id)
+                {
+                    <input class="form-control form-control-sm" dir="auto" @bind="editText" @bind:event="oninput"
+                           @onkeydown="@(e => OnEditKeyDown(e, t))" />
+                    <button class="btn btn-outline-primary icon-button" title="@T["save"]" aria-label="@T["save"]" @onclick="() => SaveEdit(t)"><i class="bi bi-check-lg"></i></button>
+                }
+                else
+                {
+                    <div class="task-main">
+                        <span class="task-title @(t.IsDone ? "task-complete" : "") @(ContainsArabic(t.Title) ? "arabic-text" : "")">@t.Title</span>
+                        @if (!string.IsNullOrWhiteSpace(t.ProjectName))
+                        {
+                            <span class="task-project">@t.ProjectName</span>
+                        }
+                    </div>
+                    <button class="btn btn-link icon-button task-menu-btn" title="@T["edit"]" aria-label="@T["edit"]" @onclick="() => StartEdit(t)"><i class="bi bi-pencil"></i></button>
+                    <div class="task-menu-wrap">
+                        <button class="btn btn-link icon-button task-menu-btn" title="@T["more_options"]" aria-label="@T["more_options"]" aria-haspopup="menu" aria-expanded="@(menuFor == t.Id)" @onclick="() => ToggleMenu(t)"><i class="bi bi-three-dots-vertical"></i></button>
+                        @if (menuFor == t.Id)
+                        {
+                            <div class="menu-backdrop" @onclick="CloseMenu"></div>
+                            <div class="task-menu" role="menu">
+                                @if (project!.ScheduleType == TaskScheduleType.DayWeek)
+                                {
+                                    @if (!t.IsDone)
+                                    {
+                                        <button type="button" role="menuitem" @onclick="() => MoveToNextDay(t)"><i class="bi bi-arrow-right-circle flip-rtl" aria-hidden="true"></i> @T["move_next_day"]</button>
+                                    }
+                                    <button type="button" role="menuitem" @onclick="() => DuplicateToNextDay(t)"><i class="bi bi-copy" aria-hidden="true"></i> @T["duplicate_next_day"]</button>
+                                }
+                                <button type="button" role="menuitem" @onclick="() => { CloseMenu(); ToggleAddSubtask(t); }"><i class="bi bi-plus-lg" aria-hidden="true"></i> @T["add_subtask"]</button>
+                                <button type="button" role="menuitem" class="is-danger" @onclick="async () => { CloseMenu(); await DeleteTask(t); }"><i class="bi bi-trash" aria-hidden="true"></i> @T["delete"]</button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            </div>
+
+            @foreach (var sub in project!.Tasks.Where(c => c.ParentTaskId == t.Id).OrderBy(c => c.IsDone).ThenBy(c => c.SortOrder))
+            {
+                <div class="task-row subtask-row" @key="sub">
+                    <input type="checkbox" checked="@sub.IsDone" @onchange="() => ToggleTask(sub)" aria-label="@T["mark_done"]" />
+                    @if (editingId == sub.Id)
+                    {
+                        <input class="form-control form-control-sm" dir="auto" @bind="editText" @bind:event="oninput"
+                               @onkeydown="@(e => OnEditKeyDown(e, sub))" />
+                        <button class="btn btn-outline-primary icon-button" title="@T["save"]" aria-label="@T["save"]" @onclick="() => SaveEdit(sub)"><i class="bi bi-check-lg"></i></button>
+                    }
+                    else
+                    {
+                        <span class="task-title @(sub.IsDone ? "task-complete" : "") @(ContainsArabic(sub.Title) ? "arabic-text" : "")">@sub.Title</span>
+                        <button class="btn btn-link icon-button task-menu-btn" title="@T["edit"]" aria-label="@T["edit"]" @onclick="() => StartEdit(sub)"><i class="bi bi-pencil"></i></button>
+                        <div class="task-menu-wrap">
+                            <button class="btn btn-link icon-button task-menu-btn" title="@T["more_options"]" aria-label="@T["more_options"]" aria-haspopup="menu" aria-expanded="@(menuFor == sub.Id)" @onclick="() => ToggleMenu(sub)"><i class="bi bi-three-dots-vertical"></i></button>
+                            @if (menuFor == sub.Id)
+                            {
+                                <div class="menu-backdrop" @onclick="CloseMenu"></div>
+                                <div class="task-menu" role="menu">
+                                    <button type="button" role="menuitem" class="is-danger" @onclick="async () => { CloseMenu(); await DeleteTask(sub); }"><i class="bi bi-trash" aria-hidden="true"></i> @T["delete"]</button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (addingSubtaskFor == t.Id)
+            {
+                <div class="add-subtask-row">
+                    <input class="form-control form-control-sm" dir="auto" placeholder="@T["add_subtask_placeholder"]" @bind="newSubtaskText" @bind:event="oninput"
+                           @onkeydown="@(async e => { if (e.Key == "Enter") await AddSubtask(t); })" />
+                    <button class="btn btn-outline-primary icon-button" title="@T["add_subtask"]" aria-label="@T["add_subtask"]" @onclick="() => AddSubtask(t)"><i class="bi bi-plus-lg"></i></button>
+                </div>
+            }
+        </div>;
+
     private Project? project;
     private ElementReference container;
+    private ElementReference openList;
+    private bool sortAttached;
+    private bool editingDate;
     private DotNetObjectReference<ProjectDetail>? self;
     private Guid? editingId;
     private string editText = "";
@@ -190,13 +213,47 @@
         (character >= 'ﭐ' && character <= '﷿') ||
         (character >= 'ﹰ' && character <= '﻿'));
 
-    protected override async Task OnInitializedAsync() => await Load();
+    private Guid loadedId;
+
+    // Parameters, not initialisation: navigating from one project to another reuses this page.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (loadedId == ProjectId && project is not null) return;
+        loadedId = ProjectId;
+        project = null;
+        editingDate = false;
+        await Load();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
-        self = DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync("nxtTaskSwipe.attach", container, self);
+        if (firstRender)
+        {
+            self = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("nxtTaskSwipe.attach", container, self);
+        }
+        // The list only exists once the project has loaded.
+        if (!sortAttached && project is not null && self is not null)
+        {
+            sortAttached = true;
+            await JS.InvokeVoidAsync("nxtTaskSort.attach", openList, self);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnReorder(string id, int newIndex)
+    {
+        if (project is null) return;
+        var open = project.Tasks.Where(x => x.ParentTaskId is null && !x.IsDone).OrderBy(x => x.SortOrder).ToList();
+        var moved = open.FirstOrDefault(x => x.Id.ToString() == id);
+        if (moved is null) return;
+        open.Remove(moved);
+        open.Insert(Math.Clamp(newIndex, 0, open.Count), moved);
+        var order = 0;
+        foreach (var task in open) task.SortOrder = order++;
+        foreach (var task in project.Tasks.Where(x => x.ParentTaskId is null && x.IsDone).OrderBy(x => x.SortOrder)) task.SortOrder = order++;
+        await ProjectStore.SaveProjectAsync(project);
+        StateHasChanged();
     }
 
     [JSInvokable]
@@ -272,6 +329,45 @@
         var checkpoint = await Undo.CheckpointAsync();
         await ProjectStore.MoveTasksToDayAsync(project, [t], (project.ScheduleDate ?? DateTime.Today).Date.AddDays(1));
         await checkpoint.OfferAsync(T["moved_to_next_day"]);
+        await Load();
+    }
+
+    private Task ChangeDateAsync(ChangeEventArgs e) =>
+        DateTime.TryParseExact(e.Value?.ToString(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var date) ? SetDateAsync(date) : Task.CompletedTask;
+
+    /// <summary>
+    /// Reschedules the project. A day moved onto a date that already has a day project joins it, so each date
+    /// still shows up once.
+    /// </summary>
+    private async Task SetDateAsync(DateTime date)
+    {
+        if (project is null || project.ScheduleDate?.Date == date.Date) { editingDate = false; return; }
+        var checkpoint = await Undo.CheckpointAsync();
+        editingDate = false;
+
+        if (project.ScheduleType == TaskScheduleType.DayWeek)
+        {
+            var existing = (await ProjectStore.GetProjectsAsync()).FirstOrDefault(other => other.Id != project.Id
+                && other.ScheduleType == TaskScheduleType.DayWeek && other.ScheduleDate?.Date == date.Date);
+            if (existing is not null)
+            {
+                var target = await ProjectStore.MoveTasksToDayAsync(project, project.Tasks.Where(x => x.ParentTaskId is null).ToList(), date);
+                target.UpdateArchivedState();
+                await ProjectStore.SaveProjectAsync(target);
+                await ProjectStore.DeleteProjectAsync(project.Id);
+                await checkpoint.OfferAsync(T.F("moved_to_day", T.DayName(date)));
+                Nav.NavigateTo($"project/{target.Id}", replace: true);
+                return;
+            }
+            // Keep generated day names in step with the date; a name the user typed stays.
+            if (project.ScheduleDate is { } old && project.Title == old.ToString("dddd, MMM d", System.Globalization.CultureInfo.InvariantCulture))
+                project.Title = date.ToString("dddd, MMM d", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        project.ScheduleDate = date.Date;
+        await ProjectStore.SaveProjectAsync(project);
+        await checkpoint.OfferAsync(T["date_changed"]);
         await Load();
     }
 

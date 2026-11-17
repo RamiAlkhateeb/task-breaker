@@ -201,7 +201,15 @@ public sealed class AppText
             ["swipe_next_day"] = "Next day",
             ["sync_ok"] = "Synced",
             ["sync_problem"] = "Sync problem",
-            ["projects_heading"] = "Projects"
+            ["projects_heading"] = "Projects",
+            ["change_date"] = "Change date",
+            ["set_date"] = "Set date",
+            ["moved_to_day"] = "Moved to {0}",
+            ["date_changed"] = "Date changed",
+            ["drag_to_reorder"] = "Drag to reorder",
+            ["week_strip"] = "Next 7 days",
+            ["day_empty"] = "Nothing planned for this day yet. Add the first task below.",
+            ["day_invalid"] = "That date isn't valid."
         },
         ["ar"] = new()
         {
@@ -332,7 +340,15 @@ public sealed class AppText
             ["swipe_next_day"] = "اليوم التالي",
             ["sync_ok"] = "تمت المزامنة",
             ["sync_problem"] = "مشكلة في المزامنة",
-            ["projects_heading"] = "المشاريع"
+            ["projects_heading"] = "المشاريع",
+            ["change_date"] = "تغيير التاريخ",
+            ["set_date"] = "تحديد تاريخ",
+            ["moved_to_day"] = "نُقلت إلى {0}",
+            ["date_changed"] = "تم تغيير التاريخ",
+            ["drag_to_reorder"] = "اسحب لإعادة الترتيب",
+            ["week_strip"] = "الأيام السبعة القادمة",
+            ["day_empty"] = "لا شيء مخطط لهذا اليوم بعد. أضف أول مهمة بالأسفل.",
+            ["day_invalid"] = "هذا التاريخ غير صالح."
         }
     };
 }

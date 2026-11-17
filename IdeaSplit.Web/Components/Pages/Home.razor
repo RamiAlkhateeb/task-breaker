@@ -67,6 +67,7 @@
     {
         @if (!HasQuery)
         {
+            <WeekStrip Projects="allProjects" />
             <TodaySection Projects="allProjects" OnChanged="LoadProjects" />
             @if (projects.Count > 0) { <h2 class="list-heading">@T["projects_heading"]</h2> }
         }

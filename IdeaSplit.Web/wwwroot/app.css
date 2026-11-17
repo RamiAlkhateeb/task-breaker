@@ -343,3 +343,24 @@ textarea.form-control { min-height: 120px; }
 h1:focus { outline: none; }
 /* On pages with the plan box, toasts sit above it instead of covering it. */
 body:has(.composer) .nxt-toast { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+
+/* ---- Week strip (Home) ---- */
+.week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 0 0 20px; }
+.week-day { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 6px; border-radius: var(--radius-md); background: var(--color-page); color: var(--color-text-secondary); text-decoration: none; min-height: 64px; transition: background-color .15s ease, transform .15s ease; }
+.week-day:hover { color: var(--color-text-main); background: var(--color-border); }
+.week-day:active { transform: scale(.96); }
+.week-day-name { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
+.week-day-number { font-size: 1.05rem; font-weight: 800; color: var(--color-text-main); }
+.week-day-count { min-height: 1em; font-size: .7rem; font-weight: 800; color: var(--color-primary); }
+.week-day.is-today { background: var(--color-primary); color: rgba(255,255,255,.85); }
+.week-day.is-today .week-day-number, .week-day.is-today .week-day-count { color: #fff; }
+
+/* ---- Project date and reordering ---- */
+.date-edit-button { display: inline-flex; align-items: center; gap: 6px; padding: 2px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.date-edit-button .nxt-icon { width: 14px; height: 14px; }
+.date-edit-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
+.date-edit-row .form-control { flex: 1 1 160px; width: auto; }
+.drag-handle { flex: 0 0 auto; display: inline-grid; place-items: center; width: 20px; height: 32px; margin-inline-end: -6px; color: var(--color-text-secondary); opacity: .45; cursor: grab; touch-action: none; }
+.drag-handle:hover { opacity: 1; }
+.drag-ghost { opacity: .4; background: var(--color-primary-light); border-radius: var(--radius-sm); }
+.sortable-chosen .task-row { background: var(--color-page); }
