@@ -228,7 +228,22 @@ public sealed class AppText
             ["onboarding_plan"] = "Type a plan or a single task in the box below. Choose Task to add it as is, or Project to have it split into steps.",
             ["onboarding_swipe"] = "Swipe a task right to finish it, or left to move it to the next day.",
             ["onboarding_sync"] = "Sign in under Settings to keep your phone and computer in sync.",
-            ["onboarding_done"] = "Got it"
+            ["onboarding_done"] = "Got it",
+            ["repeat"] = "Repeat…",
+            ["repeat_days"] = "Repeat on",
+            ["every_day"] = "Every day",
+            ["repeat_save"] = "Repeat",
+            ["repeat_saved"] = "Repeats: {0}",
+            ["stop_repeating"] = "Stop repeating",
+            ["routine_stopped"] = "“{0}” no longer repeats",
+            ["routines_title"] = "Repeating tasks",
+            ["routines_desc"] = "Tasks added to your day automatically on the days you choose.",
+            ["routines_empty"] = "None yet. Open a task's menu and choose Repeat to make it come back on chosen days.",
+            ["list_separator"] = ", ",
+            ["delete_account"] = "Delete account",
+            ["confirm_delete_account"] = "Delete your account and every project in it, on all your devices? This can't be undone. Export a backup first if you might want them later.",
+            ["delete_account_unavailable"] = "Account deletion isn't set up on the server yet.",
+            ["account_deleted"] = "Your account and its data were deleted."
         },
         ["ar"] = new()
         {
@@ -386,7 +401,22 @@ public sealed class AppText
             ["onboarding_plan"] = "اكتب خطة أو مهمة واحدة في المربع بالأسفل. اختر «مهمة» لإضافتها كما هي، أو «مشروع» لتقسيمها إلى خطوات.",
             ["onboarding_swipe"] = "اسحب المهمة يمينًا لإنجازها، أو يسارًا لنقلها إلى اليوم التالي.",
             ["onboarding_sync"] = "سجّل الدخول من الإعدادات لمزامنة هاتفك وحاسوبك.",
-            ["onboarding_done"] = "فهمت"
+            ["onboarding_done"] = "فهمت",
+            ["repeat"] = "تكرار…",
+            ["repeat_days"] = "التكرار في",
+            ["every_day"] = "كل يوم",
+            ["repeat_save"] = "تكرار",
+            ["repeat_saved"] = "تتكرر: {0}",
+            ["stop_repeating"] = "إيقاف التكرار",
+            ["routine_stopped"] = "لم تعد «{0}» تتكرر",
+            ["routines_title"] = "المهام المتكررة",
+            ["routines_desc"] = "مهام تُضاف إلى يومك تلقائيًا في الأيام التي تختارها.",
+            ["routines_empty"] = "لا شيء بعد. افتح قائمة مهمة واختر «تكرار» لتعود في أيام تختارها.",
+            ["list_separator"] = "، ",
+            ["delete_account"] = "حذف الحساب",
+            ["confirm_delete_account"] = "حذف حسابك وكل مشاريعه على جميع أجهزتك؟ لا يمكن التراجع عن ذلك. صدّر نسخة احتياطية أولًا إن كنت قد تحتاجها لاحقًا.",
+            ["delete_account_unavailable"] = "حذف الحساب غير مُعدّ على الخادم بعد.",
+            ["account_deleted"] = "حُذف حسابك وبياناته."
         }
     };
 }

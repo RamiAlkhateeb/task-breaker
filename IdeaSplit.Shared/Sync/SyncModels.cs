@@ -9,12 +9,13 @@ public sealed record Tombstone(string Table, Guid Id, DateTime DeletedAt)
 {
     public const string Projects = "projects";
     public const string Tasks = "tasks";
+    public const string Routines = "routines";
 }
 
 /// <summary>Everything that changed locally since the last successful upload.</summary>
-public sealed record SyncSnapshot(List<Project> Projects, List<TaskItem> Tasks, List<Tombstone> Tombstones)
+public sealed record SyncSnapshot(List<Project> Projects, List<TaskItem> Tasks, List<Tombstone> Tombstones, List<Routine> Routines)
 {
-    public bool IsEmpty => Projects.Count == 0 && Tasks.Count == 0 && Tombstones.Count == 0;
+    public bool IsEmpty => Projects.Count == 0 && Tasks.Count == 0 && Tombstones.Count == 0 && Routines.Count == 0;
 }
 
 /// <summary>The local data the sync engine reads from and writes back to.</summary>
@@ -34,6 +35,9 @@ public interface ISyncStore
     /// them were removed elsewhere; otherwise they are only the recently changed ones.
     /// </summary>
     Task<bool> ApplyRemoteAsync(IReadOnlyList<ProjectRow> projects, IReadOnlyList<TaskRow> tasks, bool complete = true);
+
+    /// <summary>Merges routines from the server, the same way as <see cref="ApplyRemoteAsync"/>.</summary>
+    Task<bool> ApplyRemoteRoutinesAsync(IReadOnlyList<RoutineRow> routines, bool complete);
 
     /// <summary>Removes all local data (used on sign-out).</summary>
     Task ClearAsync();
@@ -104,4 +108,33 @@ public sealed class TaskRow
         UpdatedAt = new DateTimeOffset(DateTime.SpecifyKind(task.UpdatedAt, DateTimeKind.Utc)),
         Deleted = false
     };
+}
+
+/// <summary><c>public.routines</c> as stored in Supabase (repeating tasks).</summary>
+public sealed class RoutineRow
+{
+    [JsonPropertyName("id")] public Guid Id { get; set; }
+    [JsonPropertyName("user_id")] public Guid UserId { get; set; }
+    [JsonPropertyName("title")] public string Title { get; set; } = "";
+    [JsonPropertyName("project_name")] public string? ProjectName { get; set; }
+    [JsonPropertyName("days")] public int Days { get; set; }
+    [JsonPropertyName("generated_through")] public string? GeneratedThrough { get; set; }
+    [JsonPropertyName("updated_at")] public DateTimeOffset UpdatedAt { get; set; }
+    [JsonPropertyName("deleted")] public bool Deleted { get; set; }
+
+    public static RoutineRow From(Routine routine, Guid userId) => new()
+    {
+        Id = routine.Id,
+        UserId = userId,
+        Title = routine.Title,
+        ProjectName = routine.ProjectName,
+        Days = routine.Days,
+        GeneratedThrough = routine.GeneratedThrough == default ? null : routine.GeneratedThrough.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        UpdatedAt = new DateTimeOffset(DateTime.SpecifyKind(routine.UpdatedAt, DateTimeKind.Utc)),
+        Deleted = false
+    };
+
+    [JsonIgnore]
+    public DateTime ParsedGeneratedThrough =>
+        DateTime.TryParseExact(GeneratedThrough, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ? date : default;
 }

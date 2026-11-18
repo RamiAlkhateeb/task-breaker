@@ -37,6 +37,7 @@
                 @if (!changingPassword && !Auth.PasswordResetPending) { <NxtButton Variant="ghost" OnClick="() => changingPassword = true">@T["change_password"]</NxtButton> }
                 <NxtButton Variant="ghost" OnClick="SignOutAsync">@T["sign_out"]</NxtButton>
             </div>
+            <button type="button" class="nxt-link account-delete" disabled="@busy" @onclick="DeleteAccountAsync">@T["delete_account"]</button>
         }
         else
         {
@@ -130,6 +131,24 @@
             newPassword = "";
             changingPassword = false;
             Toasts.Show(T["password_saved"]);
+        }
+        finally { busy = false; }
+    }
+
+    private async Task DeleteAccountAsync()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", T["confirm_delete_account"])) return;
+        busy = true;
+        try
+        {
+            var error = await Auth.DeleteAccountAsync();
+            if (error is not null)
+            {
+                Toasts.Show(error == SupabaseAuth.DeleteAccountUnavailable ? T["delete_account_unavailable"] : Friendly(error), isError: true);
+                return;
+            }
+            await Sync.SignOutAsync(clearLocalData: true);
+            Toasts.Show(T["account_deleted"]);
         }
         finally { busy = false; }
     }

@@ -382,3 +382,17 @@ body:has(.composer) .nxt-toast { bottom: calc(86px + env(safe-area-inset-bottom,
 .onboarding ol { display: grid; gap: 10px; margin: 0 0 14px; padding: 0; list-style: none; }
 .onboarding li { display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; }
 .onboarding li .nxt-icon { flex: 0 0 auto; width: 20px; height: 20px; margin-top: 2px; color: var(--color-primary); }
+
+/* ---- Repeating tasks ---- */
+.repeat-mark { width: 14px; height: 14px; margin-inline-start: 6px; vertical-align: -2px; color: var(--color-text-secondary); }
+.repeat-editor { display: grid; gap: 10px; padding-block: 4px 12px; padding-inline: 38px 0; }
+.repeat-days { display: flex; flex-wrap: wrap; gap: 6px; }
+.repeat-day { min-width: 48px; }
+.repeat-actions { display: flex; gap: 4px; }
+.routine-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.routine-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--nxt-border); }
+.routine-list li:last-child { border-bottom: 0; }
+.routine-list li div { display: flex; flex-direction: column; min-width: 0; }
+.routine-list li strong { overflow-wrap: anywhere; }
+.routine-list li span { font-size: 13px; color: var(--nxt-text-2); }
+.account-delete { align-self: flex-start; padding: 0; border: 0; background: none; color: var(--nxt-danger); cursor: pointer; }

@@ -5,6 +5,8 @@
 @inject NavigationManager Nav
 @inject IdeaSplit.Web.Services.UndoService Undo
 @inject IJSRuntime JS
+@inject IRoutineStore Routines
+@inject ToastService Toasts
 @implements IAsyncDisposable
 
 <div class="page-container" @ref="container">
@@ -122,7 +124,7 @@
                 else
                 {
                     <div class="task-main">
-                        <span class="task-title @(t.IsDone ? "task-complete" : "") @(ContainsArabic(t.Title) ? "arabic-text" : "")">@t.Title</span>
+                        <span class="task-title @(t.IsDone ? "task-complete" : "") @(ContainsArabic(t.Title) ? "arabic-text" : "")">@t.Title@if (RoutineOf(t) is not null) {<NxtIcon Name="repeat" CssClass="repeat-mark" />}</span>
                         @if (!string.IsNullOrWhiteSpace(t.ProjectName))
                         {
                             <span class="task-project">@t.ProjectName</span>
@@ -142,6 +144,14 @@
                                         <button type="button" role="menuitem" @onclick="() => MoveToNextDay(t)"><NxtIcon Name="arrow-right-circle" CssClass="flip-rtl" /> @T["move_next_day"]</button>
                                     }
                                     <button type="button" role="menuitem" @onclick="() => DuplicateToNextDay(t)"><NxtIcon Name="copy" /> @T["duplicate_next_day"]</button>
+                                    @if (RoutineOf(t) is { } routine)
+                                    {
+                                        <button type="button" role="menuitem" @onclick="() => StopRepeatingAsync(routine)"><NxtIcon Name="repeat" /> @T["stop_repeating"]</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" role="menuitem" @onclick="() => { CloseMenu(); repeatingFor = t.Id; }"><NxtIcon Name="repeat" /> @T["repeat"]</button>
+                                    }
                                 }
                                 <button type="button" role="menuitem" @onclick="() => { CloseMenu(); ToggleAddSubtask(t); }"><NxtIcon Name="plus" /> @T["add_subtask"]</button>
                                 <button type="button" role="menuitem" class="is-danger" @onclick="async () => { CloseMenu(); await DeleteTask(t); }"><NxtIcon Name="trash" /> @T["delete"]</button>
@@ -178,6 +188,11 @@
                         </div>
                     }
                 </div>
+            }
+
+            @if (repeatingFor == t.Id)
+            {
+                <RepeatEditor Days="@(1 << (int)(project!.ScheduleDate ?? DateTime.Today).DayOfWeek)" OnSave="days => RepeatAsync(t, days)" OnCancel="() => repeatingFor = null" />
             }
 
             @if (addingSubtaskFor == t.Id)
@@ -273,8 +288,40 @@
         self?.Dispose();
     }
 
+    private List<Routine> routines = [];
+    private Guid? repeatingFor;
+
+    /// <summary>The routine this task was added by (or made into), if any.</summary>
+    private Routine? RoutineOf(TaskItem task) =>
+        project?.ScheduleType == TaskScheduleType.DayWeek && project.ScheduleDate is { } date
+            ? routines.FirstOrDefault(routine => routine.TaskIdFor(date) == task.Id)
+            : null;
+
+    private async Task RepeatAsync(TaskItem task, int days)
+    {
+        repeatingFor = null;
+        if (project is null) return;
+        await Routines.RepeatTaskAsync(project.Id, task.Id, days);
+        Toasts.Show(T.F("repeat_saved", RepeatEditor.Summary(days, T)));
+        await Load();
+    }
+
+    private async Task StopRepeatingAsync(Routine routine)
+    {
+        CloseMenu();
+        await Routines.DeleteRoutineAsync(routine.Id);
+        await Load();
+        Toasts.ShowWithAction(T.F("routine_stopped", routine.Title), T["undo"], async () =>
+        {
+            await Routines.SaveRoutineAsync(routine);
+            await Load();
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+
     private async Task Load()
     {
+        routines = await Routines.GetRoutinesAsync();
         project = await ProjectStore.GetProjectAsync(ProjectId);
     }
 

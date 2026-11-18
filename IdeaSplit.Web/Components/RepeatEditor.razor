@@ -1,0 +1,38 @@
+@using System.Globalization
+@using IdeaSplit.Shared.Models
+
+@* Pick the days of the week a task repeats on. *@
+<div class="repeat-editor" role="group" aria-label="@T["repeat_days"]">
+    <div class="repeat-days">
+        <button type="button" class="quick-date-chip @(Days == Routine.EveryDay ? "active" : "")" aria-pressed="@(Days == Routine.EveryDay)" @onclick="() => Days = Routine.EveryDay">@T["every_day"]</button>
+        @foreach (var day in WeekOrder())
+        {
+            var bit = 1 << (int)day;
+            <button type="button" class="quick-date-chip repeat-day @((Days & bit) != 0 ? "active" : "")" aria-pressed="@((Days & bit) != 0)" @onclick="() => Days ^= bit">
+                @CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedDayName(day)
+            </button>
+        }
+    </div>
+    <div class="repeat-actions">
+        <button type="button" class="btn btn-primary btn-sm" disabled="@(Days == 0)" @onclick="() => OnSave.InvokeAsync(Days)">@T["repeat_save"]</button>
+        <button type="button" class="btn btn-link btn-sm" @onclick="OnCancel">@T["cancel"]</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Days { get; set; }
+    [Parameter] public EventCallback<int> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    /// <summary>The week as the current language starts it (Saturday or Sunday in Arabic, Sunday or Monday in English).</summary>
+    public static IEnumerable<DayOfWeek> WeekOrder()
+    {
+        var first = (int)CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek;
+        return Enumerable.Range(0, 7).Select(offset => (DayOfWeek)((first + offset) % 7));
+    }
+
+    public static string Summary(int days, AppText text) => days == Routine.EveryDay
+        ? text["every_day"]
+        : string.Join(text["list_separator"], WeekOrder().Where(day => (days & (1 << (int)day)) != 0)
+            .Select(day => CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedDayName(day)));
+}

@@ -10,7 +10,7 @@ namespace IdeaSplit.Shared.Data;
 /// Pages save whole projects; the store works out which rows changed, stamps them for sync and records
 /// deletions, so pages don't need to know about sync at all.
 /// </summary>
-public class LocalStorageProjectStore : IProjectStore, ISyncStore
+public partial class LocalStorageProjectStore : IProjectStore, ISyncStore
 {
     private const string ProjectsKey = "nxt.task.projects";
     private const string TombstonesKey = "nxt.task.tombstones";
@@ -106,10 +106,12 @@ public class LocalStorageProjectStore : IProjectStore, ISyncStore
         {
             var projects = await LoadAsync();
             var tombstones = await LoadTombstonesAsync();
+            var routines = await LoadRoutinesAsync();
             return new SyncSnapshot(
                 projects.Where(project => project.IsDirty).Select(CopyProject).ToList(),
                 projects.SelectMany(project => project.Tasks).Where(task => task.IsDirty).Select(CopyTask).ToList(),
-                tombstones.ToList());
+                tombstones.ToList(),
+                routines.Where(routine => routine.IsDirty).Select(CopyRoutine).ToList());
         }
         finally { _lock.Release(); }
     }
@@ -132,6 +134,12 @@ public class LocalStorageProjectStore : IProjectStore, ISyncStore
             var tombstones = await LoadTombstonesAsync();
             tombstones.RemoveAll(tombstone => pushed.Tombstones.Contains(tombstone));
             await SaveAsync(projects, tombstones);
+
+            var pushedRoutines = pushed.Routines.ToDictionary(routine => routine.Id, routine => routine.UpdatedAt);
+            var routines = await LoadRoutinesAsync();
+            foreach (var routine in routines)
+                if (pushedRoutines.TryGetValue(routine.Id, out var routineStamp) && routineStamp == routine.UpdatedAt) routine.IsDirty = false;
+            await SaveRoutinesAsync(routines);
         }
         finally { _lock.Release(); }
     }
@@ -248,6 +256,7 @@ public class LocalStorageProjectStore : IProjectStore, ISyncStore
         {
             await _storage.RemoveItemAsync(ProjectsKey);
             await _storage.RemoveItemAsync(TombstonesKey);
+            await _storage.RemoveItemAsync(RoutinesKey);
             // Don't resurrect pre-sync data on the next load once the device is signed out.
             await _storage.RemoveItemAsync(LegacyProjectsKey);
         }

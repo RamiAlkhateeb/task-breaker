@@ -28,6 +28,13 @@ public class SyncRowTests
     }
 
     [Fact]
+    public void Routine_rows_send_only_table_columns()
+    {
+        var row = RoutineRow.From(new Routine { Title = "Gym", Days = Routine.EveryDay, GeneratedThrough = DateTime.Today }, Guid.NewGuid());
+        Assert.Equal(new[] { "id", "user_id", "title", "project_name", "days", "generated_through", "updated_at", "deleted" }.Order(), SentNames(row).Order());
+    }
+
+    [Fact]
     public void Schedule_dates_are_sent_as_plain_dates()
     {
         var row = ProjectRow.From(new Project { ScheduleDate = new DateTime(2026, 11, 17) }, Guid.NewGuid());

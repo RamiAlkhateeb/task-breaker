@@ -1,22 +1,31 @@
+@using IdeaSplit.Shared.Data
 @using IdeaSplit.Shared.Sync
+@using IdeaSplit.Web.Services
 @implements IDisposable
+@inject SupabaseConfig Config
 @inject SupabaseAuth Auth
 @inject SupabaseSync Sync
+@inject IRoutineStore Routines
+@inject DataEvents Data
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject ToastService Toasts
 
-@* No UI: finishes magic-link sign-in and keeps sync running in the background. *@
+@* No UI: finishes sign-in links, adds today's repeating tasks, and keeps sync running in the background. *@
 
 @code {
     private DotNetObjectReference<SyncHost>? self;
+    private string? liveToken;
 
     protected override async Task OnInitializedAsync()
     {
+        await AddDueRoutineTasksAsync();
         if (!Auth.IsConfigured) return;
         await Auth.InitializeAsync();
         await Sync.InitializeAsync();
         Auth.Changed += OnAuthChanged;
+        Sync.DataChanged += OnSyncedData;
+        Sync.StatusChanged += OnSyncStatus;
 
         var fragment = new Uri(Nav.Uri).Fragment;
         if (fragment.Length > 1)
@@ -38,24 +47,66 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || !Auth.IsConfigured) return;
+        if (!firstRender) return;
         self = DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync("nxtTaskSync.register", self);
+        if (!Auth.IsConfigured) return;
+        await ConnectLiveAsync();
         _ = Sync.SyncNowAsync();
     }
 
-    [JSInvokable] public Task OnVisible() => Sync.SyncNowAsync();
+    /// <summary>The app came back to the foreground or online: a new day may have started, and others may have made changes.</summary>
+    [JSInvokable]
+    public async Task OnVisible()
+    {
+        await AddDueRoutineTasksAsync();
+        if (Auth.IsConfigured) await Sync.SyncNowAsync();
+    }
 
-    [JSInvokable] public Task OnHidden() => Sync.SyncNowAsync();
+    [JSInvokable] public Task OnHidden() => Auth.IsConfigured ? Sync.SyncNowAsync() : Task.CompletedTask;
+
+    /// <summary>Another device changed something (Supabase Realtime).</summary>
+    [JSInvokable] public void OnRemoteChange() => Sync.ScheduleSoon();
+
+    private async Task AddDueRoutineTasksAsync()
+    {
+        if (await Routines.AddDueRoutineTasksAsync(DateTime.Today)) Data.Raise();
+    }
 
     private void OnAuthChanged()
     {
-        if (Auth.IsSignedIn) _ = Sync.SyncNowAsync();
+        _ = InvokeAsync(async () =>
+        {
+            await ConnectLiveAsync();
+            if (Auth.IsSignedIn) await Sync.SyncNowAsync();
+        });
+    }
+
+    /// <summary>Routines from another device may make one due today.</summary>
+    private void OnSyncedData() => _ = InvokeAsync(AddDueRoutineTasksAsync);
+
+    /// <summary>The live connection needs the current sign-in token; sync refreshes it when it expires.</summary>
+    private void OnSyncStatus()
+    {
+        var token = Auth.Session?.AccessToken;
+        if (token is null || token == liveToken || self is null) return;
+        liveToken = token;
+        _ = JS.InvokeVoidAsync("nxtTaskRealtime.setToken", token).AsTask();
+    }
+
+    private async Task ConnectLiveAsync()
+    {
+        if (self is null) return;
+        liveToken = Auth.Session?.AccessToken;
+        if (liveToken is null) await JS.InvokeVoidAsync("nxtTaskRealtime.disconnect");
+        else await JS.InvokeVoidAsync("nxtTaskRealtime.connect", Config.BaseUrl, Config.PublishableKey, liveToken, self);
     }
 
     public void Dispose()
     {
         Auth.Changed -= OnAuthChanged;
+        Sync.DataChanged -= OnSyncedData;
+        Sync.StatusChanged -= OnSyncStatus;
         self?.Dispose();
     }
 }

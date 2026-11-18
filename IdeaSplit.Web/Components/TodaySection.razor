@@ -4,6 +4,7 @@
 @using IdeaSplit.Web.Services
 @implements IAsyncDisposable
 @inject IProjectStore ProjectStore
+@inject IRoutineStore Routines
 @inject UndoService Undo
 @inject ILocalStorageService Storage
 @inject NavigationManager Nav
@@ -47,7 +48,7 @@
             <div class="swipe-surface task-row today-row">
                 <input type="checkbox" checked="@task.IsDone" @onchange="() => ToggleAsync(project, task)" aria-label="@T["mark_done"]" />
                 <a class="task-main today-task" href="@($"project/{project.Id}")">
-                    <span class="task-title" dir="auto">@task.Title</span>
+                    <span class="task-title" dir="auto">@task.Title@if (repeatingIds.Contains(task.Id)) {<NxtIcon Name="repeat" CssClass="repeat-mark" />}</span>
                     @{ var subtasks = project.Tasks.Where(sub => sub.ParentTaskId == task.Id).ToList(); }
                     @if (!string.IsNullOrWhiteSpace(task.ProjectName) || subtasks.Count > 0)
                     {
@@ -95,9 +96,11 @@
     private int total;
     private bool showDone;
     private bool carryOverDismissed = true;
+    private HashSet<Guid> repeatingIds = [];
 
     protected override async Task OnInitializedAsync()
     {
+        repeatingIds = (await Routines.GetRoutinesAsync()).Select(routine => routine.TaskIdFor(DateTime.Today)).ToHashSet();
         try { carryOverDismissed = await Storage.GetItemAsync<string>(DismissedKey) == DateTime.Today.ToString("yyyy-MM-dd"); }
         catch (System.Text.Json.JsonException) { carryOverDismissed = false; }
     }

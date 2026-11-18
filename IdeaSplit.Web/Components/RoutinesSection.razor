@@ -1,0 +1,45 @@
+@using IdeaSplit.Shared.Data
+@using IdeaSplit.Shared.Models
+@inject IRoutineStore Routines
+@inject ToastService Toasts
+
+@* Repeating tasks: what repeats when, and a way to stop each one. *@
+<NxtSettingsSection Icon="repeat" Title="@T["routines_title"]" Description="@T["routines_desc"]">
+    @if (routines.Count == 0)
+    {
+        <p class="account-hint">@T["routines_empty"]</p>
+    }
+    else
+    {
+        <ul class="routine-list">
+            @foreach (var routine in routines)
+            {
+                <li @key="routine.Id">
+                    <div>
+                        <strong dir="auto">@routine.Title</strong>
+                        <span>@RepeatEditor.Summary(routine.Days, T)</span>
+                    </div>
+                    <button type="button" class="btn btn-link icon-button" title="@T["stop_repeating"]" aria-label="@($"{T["stop_repeating"]}: {routine.Title}")" @onclick="() => StopAsync(routine)"><NxtIcon Name="trash" /></button>
+                </li>
+            }
+        </ul>
+    }
+</NxtSettingsSection>
+
+@code {
+    private List<Routine> routines = [];
+
+    protected override async Task OnInitializedAsync() => routines = await Routines.GetRoutinesAsync();
+
+    private async Task StopAsync(Routine routine)
+    {
+        await Routines.DeleteRoutineAsync(routine.Id);
+        routines = await Routines.GetRoutinesAsync();
+        Toasts.ShowWithAction(T.F("routine_stopped", routine.Title), T["undo"], async () =>
+        {
+            await Routines.SaveRoutineAsync(routine);
+            routines = await Routines.GetRoutinesAsync();
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+}

@@ -101,6 +101,26 @@ public sealed class SupabaseAuth
         catch (HttpRequestException) { return NetworkError; }
     }
 
+    /// <summary>
+    /// Permanently deletes the signed-in user and, through the tables' cascades, all their projects and tasks.
+    /// Needs the <c>delete_my_account</c> function in the database. Returns an error message, or null on success.
+    /// </summary>
+    public async Task<string?> DeleteAccountAsync()
+    {
+        var token = await GetAccessTokenAsync();
+        if (token is null) return NetworkError;
+        try
+        {
+            using var response = await SendAsync(HttpMethod.Post, $"{_config.BaseUrl}/rest/v1/rpc/delete_my_account", new { }, token);
+            if (response.StatusCode == HttpStatusCode.NotFound) return DeleteAccountUnavailable;
+            return response.IsSuccessStatusCode ? null : await ErrorMessageAsync(response);
+        }
+        catch (HttpRequestException) { return NetworkError; }
+    }
+
+    /// <summary>Returned by <see cref="DeleteAccountAsync"/> when the database function hasn't been added yet.</summary>
+    public const string DeleteAccountUnavailable = "delete_account_unavailable";
+
     /// <summary>True after opening a password-reset link, until a new password is saved.</summary>
     public bool PasswordResetPending { get; private set; }
 
