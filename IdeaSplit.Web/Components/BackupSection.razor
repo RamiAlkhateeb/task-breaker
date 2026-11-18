@@ -1,0 +1,56 @@
+@using System.Text.Json
+@using IdeaSplit.Shared.Data
+@using IdeaSplit.Shared.Models
+@using IdeaSplit.Web.Services
+@inject IProjectStore ProjectStore
+@inject UndoService Undo
+@inject IJSRuntime JS
+@inject ToastService Toasts
+
+@* Save every project to a file, or bring them back from one (works with or without an account). *@
+<NxtSettingsSection Icon="download" Title="@T["backup_title"]" Description="@T["backup_desc"]">
+    <div class="account-actions">
+        <NxtButton Variant="secondary" OnClick="ExportAsync">@T["backup_export"]</NxtButton>
+        <label class="nxt-button nxt-button-ghost backup-import">
+            @T["backup_import"]
+            <InputFile OnChange="ImportAsync" accept=".json,application/json" class="visually-hidden" />
+        </label>
+    </div>
+</NxtSettingsSection>
+
+@code {
+    private const string AppName = "NxtTask";
+    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+
+    private sealed record Backup(string App, int Format, DateTimeOffset ExportedAt, List<Project> Projects);
+
+    private async Task ExportAsync()
+    {
+        var backup = new Backup(AppName, 1, DateTimeOffset.UtcNow, await ProjectStore.GetProjectsAsync());
+        var json = JsonSerializer.Serialize(backup, Indented);
+        await JS.InvokeAsync<string>("nxt.download", $"nxttask-backup-{DateTime.Today:yyyy-MM-dd}.json", "application/json", json);
+    }
+
+    /// <summary>Adds the file's projects; ones that already exist take the file's version. Undo puts things back.</summary>
+    private async Task ImportAsync(InputFileChangeEventArgs e)
+    {
+        Backup? backup;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
+            backup = await JsonSerializer.DeserializeAsync<Backup>(stream);
+        }
+        catch (Exception exception) when (exception is JsonException or IOException or NotSupportedException) { backup = null; }
+
+        if (backup is not { App: AppName, Projects: not null })
+        {
+            Toasts.Show(T["backup_invalid"], isError: true);
+            return;
+        }
+        if (!await JS.InvokeAsync<bool>("confirm", T.F("backup_confirm", backup.Projects.Count))) return;
+
+        var checkpoint = await Undo.CheckpointAsync();
+        foreach (var project in backup.Projects) await ProjectStore.SaveProjectAsync(project);
+        await checkpoint.OfferAsync(T.F("backup_imported", backup.Projects.Count));
+    }
+}

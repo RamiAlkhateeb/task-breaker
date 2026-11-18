@@ -12,6 +12,12 @@ namespace IdeaSplit.Shared.Sync;
 public sealed class SupabaseSync : IDisposable
 {
     private const string LastSyncedKey = "nxt.task.last_synced";
+    private const string PullCursorKey = "nxt.task.pull_cursor";
+    private const string LastFullPullKey = "nxt.task.last_full_pull";
+    /// <summary>Edit times come from each device's clock, so a skewed clock could hide a change from the
+    /// "changed since" download; a regular full download, and a margin on the cursor, catch those.</summary>
+    private static readonly TimeSpan FullPullEvery = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan CursorMargin = TimeSpan.FromMinutes(10);
     private const int PageSize = 1000;
     private const int ChunkSize = 200;
     private static readonly TimeSpan Debounce = TimeSpan.FromSeconds(1.5);
@@ -22,6 +28,11 @@ public sealed class SupabaseSync : IDisposable
     private readonly HttpClient _http;
     private readonly ILocalStorageService _storage;
     private CancellationTokenSource? _pending;
+    /// <summary>
+    /// Repeating tasks need the <c>routines</c> table, which older Supabase setups don't have yet. Without it
+    /// they stay on this device (and keep working) instead of failing every sync.
+    /// </summary>
+    private bool _routinesTableMissing;
     private bool _running;
     private bool _again;
 
@@ -103,6 +114,8 @@ public sealed class SupabaseSync : IDisposable
         LastSyncedAt = null;
         LastError = null;
         await _storage.RemoveItemAsync(LastSyncedKey);
+        await _storage.RemoveItemAsync(PullCursorKey);
+        await _storage.RemoveItemAsync(LastFullPullKey);
         if (clearLocalData)
         {
             await _store.ClearAsync();
@@ -119,9 +132,27 @@ public sealed class SupabaseSync : IDisposable
         var userId = _auth.Session!.UserId;
 
         await PushAsync(token, userId);
-        var projects = await PullAsync<ProjectRow>(token, "projects");
-        var tasks = await PullAsync<TaskRow>(token, "tasks");
-        if (await _store.ApplyRemoteAsync(projects, tasks)) DataChanged?.Invoke();
+
+        // Usually only rows changed since the last download; everything now and then, or the first time.
+        var cursor = await ReadAsync<DateTimeOffset?>(PullCursorKey);
+        var lastFull = await ReadAsync<DateTimeOffset?>(LastFullPullKey);
+        var full = cursor is null || lastFull is null || DateTimeOffset.UtcNow - lastFull > FullPullEvery;
+        var since = full ? (DateTimeOffset?)null : cursor!.Value - CursorMargin;
+
+        var projects = await PullAsync<ProjectRow>(token, "projects", since);
+        var tasks = await PullAsync<TaskRow>(token, "tasks", since);
+        if (await _store.ApplyRemoteAsync(projects, tasks, complete: full)) DataChanged?.Invoke();
+        if (!_routinesTableMissing)
+        {
+            var routines = await PullAsync<RoutineRow>(token, Tombstone.Routines, since, optional: true);
+            if (routines is null) _routinesTableMissing = true;
+            else if (await _store.ApplyRemoteRoutinesAsync(routines, complete: full)) DataChanged?.Invoke();
+        }
+
+        var newest = projects.Select(row => row.UpdatedAt).Concat(tasks.Select(row => row.UpdatedAt)).DefaultIfEmpty(DateTimeOffset.MinValue).Max();
+        var nextCursor = cursor is { } previous && previous > newest ? previous : newest;
+        if (nextCursor > DateTimeOffset.MinValue) await _storage.SetItemAsync(PullCursorKey, nextCursor);
+        if (full) await _storage.SetItemAsync(LastFullPullKey, DateTimeOffset.UtcNow);
         // Merging can itself create changes (e.g. two devices made the same day); upload those now.
         await PushAsync(token, userId);
     }
@@ -129,6 +160,7 @@ public sealed class SupabaseSync : IDisposable
     private async Task PushAsync(string token, Guid userId)
     {
         var pending = await _store.GetPendingAsync();
+        if (_routinesTableMissing) pending = WithoutRoutines(pending);
         if (pending.IsEmpty) return;
 
         // Projects first: tasks reference them. Parents before sub-tasks for the same reason.
@@ -137,6 +169,15 @@ public sealed class SupabaseSync : IDisposable
         var orderedTasks = pending.Tasks.OrderBy(task => task.ParentTaskId is null ? 0 : 1);
         foreach (var chunk in orderedTasks.Chunk(ChunkSize))
             await UpsertAsync(token, "tasks", chunk.Select(task => TaskRow.From(task, userId)));
+        foreach (var chunk in pending.Routines.Chunk(ChunkSize))
+        {
+            if (!await UpsertAsync(token, Tombstone.Routines, chunk.Select(routine => RoutineRow.From(routine, userId)), optional: true))
+            {
+                _routinesTableMissing = true;
+                pending = WithoutRoutines(pending);
+                break;
+            }
+        }
 
         // Deletions are kept as rows marked deleted, so other devices hear about them.
         foreach (var table in pending.Tombstones.GroupBy(tombstone => tombstone.Table))
@@ -154,23 +195,47 @@ public sealed class SupabaseSync : IDisposable
         await _store.MarkPushedAsync(pending);
     }
 
-    private async Task UpsertAsync<T>(string token, string table, IEnumerable<T> rows)
+    /// <summary>Returns false (instead of failing) for an <paramref name="optional"/> table that doesn't exist.</summary>
+    private async Task<bool> UpsertAsync<T>(string token, string table, IEnumerable<T> rows, bool optional = false)
     {
         using var request = _auth.CreateRequest(HttpMethod.Post, $"{_config.BaseUrl}/rest/v1/{table}?on_conflict=id", token);
         request.Headers.Add("Prefer", "resolution=merge-duplicates,return=minimal");
         request.Content = JsonContent.Create(rows.ToList());
         using var response = await _http.SendAsync(request);
+        if (optional && IsMissingTable(response)) return false;
         await EnsureSuccessAsync(response);
+        return true;
     }
 
-    private async Task<List<T>> PullAsync<T>(string token, string table)
+    private static SyncSnapshot WithoutRoutines(SyncSnapshot pending) => pending with
     {
+        Routines = [],
+        Tombstones = pending.Tombstones.Where(tombstone => tombstone.Table != Tombstone.Routines).ToList()
+    };
+
+    /// <summary>PostgREST answers 404 for a table that isn't there (PGRST205).</summary>
+    private static bool IsMissingTable(HttpResponseMessage response) => response.StatusCode == System.Net.HttpStatusCode.NotFound;
+
+    private async Task<T?> ReadAsync<T>(string key)
+    {
+        try { return await _storage.GetItemAsync<T>(key); }
+        catch (JsonException) { return default; }
+    }
+
+    private async Task<List<T>> PullAsync<T>(string token, string table, DateTimeOffset? since) =>
+        (await PullAsync<T>(token, table, since, optional: false))!;
+
+    /// <summary>Returns null for an <paramref name="optional"/> table that doesn't exist.</summary>
+    private async Task<List<T>?> PullAsync<T>(string token, string table, DateTimeOffset? since, bool optional)
+    {
+        var filter = since is { } from ? $"&updated_at=gte.{Uri.EscapeDataString(from.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"))}" : "";
         var all = new List<T>();
         for (var offset = 0; ; offset += PageSize)
         {
             using var request = _auth.CreateRequest(HttpMethod.Get,
-                $"{_config.BaseUrl}/rest/v1/{table}?select=*&order=id&limit={PageSize}&offset={offset}", token);
+                $"{_config.BaseUrl}/rest/v1/{table}?select=*{filter}&order=id&limit={PageSize}&offset={offset}", token);
             using var response = await _http.SendAsync(request);
+            if (optional && IsMissingTable(response)) return null;
             await EnsureSuccessAsync(response);
             var page = await response.Content.ReadFromJsonAsync<List<T>>() ?? [];
             all.AddRange(page);

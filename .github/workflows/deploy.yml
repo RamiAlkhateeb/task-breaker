@@ -25,6 +25,9 @@ jobs:
       - name: Restore
         run: dotnet restore
 
+      - name: Test
+        run: dotnet test IdeaSplit.Tests --no-restore
+
       - name: Generate version manifest
         run: |
           printf '{"version":"%s"}\n' "${{ github.sha }}" > IdeaSplit.Web/wwwroot/version.json

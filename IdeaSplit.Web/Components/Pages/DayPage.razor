@@ -1,0 +1,61 @@
+@page "/day/{Date}"
+@using System.Globalization
+@using IdeaSplit.Shared.Data
+@using IdeaSplit.Shared.Models
+@inject IProjectStore ProjectStore
+@inject NavigationManager Nav
+
+@* Opens the day project for a date, or lets the user start one by adding its first task. *@
+<div class="page-container">
+    @if (date is { } day && checkedExisting)
+    {
+        <button class="btn btn-link icon-button back-button" title="@T["back"]" aria-label="@T["back"]" @onclick='() => Nav.NavigateTo("/")'><NxtIcon Name="arrow-left" CssClass="flip-rtl" /></button>
+        <h1 dir="auto">@T.DayName(day)</h1>
+        <p class="project-meta"><DueChip Date="day" Type="TaskScheduleType.DayWeek" /></p>
+        <p class="today-empty">@T["day_empty"]</p>
+        <div class="add-task-row">
+            <NxtIcon Name="plus" CssClass="add-task-glyph" />
+            <input class="add-task-input" dir="auto" placeholder="@T["add_task_placeholder"]" @bind="newTaskText" @bind:event="oninput"
+                   @onkeydown="@(async e => { if (e.Key == "Enter") await AddAsync(); })" />
+            @if (!string.IsNullOrWhiteSpace(newTaskText))
+            {
+                <button class="btn btn-primary icon-button" title="@T["add"]" aria-label="@T["add"]" @onclick="AddAsync"><NxtIcon Name="arrow-up" /></button>
+            }
+        </div>
+    }
+    else if (date is null)
+    {
+        <p class="no-results">@T["day_invalid"]</p>
+    }
+</div>
+
+@code {
+    [Parameter] public string Date { get; set; } = "";
+
+    private DateTime? date;
+    private bool checkedExisting;
+    private string newTaskText = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        checkedExisting = false;
+        date = DateTime.TryParseExact(Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed) ? parsed : null;
+        if (date is null) return;
+        var existing = (await ProjectStore.GetProjectsAsync())
+            .Where(project => project.ScheduleType == TaskScheduleType.DayWeek && project.ScheduleDate?.Date == date)
+            .OrderBy(project => project.CreatedAt)
+            .FirstOrDefault();
+        if (existing is not null) { Nav.NavigateTo($"project/{existing.Id}", replace: true); return; }
+        checkedExisting = true;
+    }
+
+    private async Task AddAsync()
+    {
+        if (date is null || string.IsNullOrWhiteSpace(newTaskText)) return;
+        var project = await ProjectStore.GetOrCreateDayProjectAsync(date.Value);
+        project.Tasks.Add(new TaskItem { ProjectId = project.Id, Title = newTaskText.Trim(), SortOrder = project.Tasks.Count(task => task.ParentTaskId is null) });
+        project.IsArchived = false;
+        await ProjectStore.SaveProjectAsync(project);
+        Nav.NavigateTo($"project/{project.Id}", replace: true);
+    }
+}

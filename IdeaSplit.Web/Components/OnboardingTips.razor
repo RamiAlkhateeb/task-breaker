@@ -1,0 +1,33 @@
+@using Blazored.LocalStorage
+@inject ILocalStorageService Storage
+
+@* Three short tips for a first visit; gone for good once dismissed. *@
+@if (visible)
+{
+    <section class="onboarding" aria-labelledby="onboarding-heading">
+        <h2 id="onboarding-heading">@T["onboarding_title"]</h2>
+        <ol>
+            <li><NxtIcon Name="square-check" /><span>@T["onboarding_plan"]</span></li>
+            <li><NxtIcon Name="arrow-right" CssClass="flip-rtl" /><span>@T["onboarding_swipe"]</span></li>
+            <li><NxtIcon Name="cloud" /><span>@T["onboarding_sync"]</span></li>
+        </ol>
+        <button type="button" class="btn btn-primary btn-sm" @onclick="DismissAsync">@T["onboarding_done"]</button>
+    </section>
+}
+
+@code {
+    private const string SeenKey = "nxt.task.onboarded";
+    private bool visible;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { visible = !await Storage.ContainKeyAsync(SeenKey); }
+        catch (InvalidOperationException) { visible = false; }
+    }
+
+    private async Task DismissAsync()
+    {
+        visible = false;
+        await Storage.SetItemAsync(SeenKey, true);
+    }
+}

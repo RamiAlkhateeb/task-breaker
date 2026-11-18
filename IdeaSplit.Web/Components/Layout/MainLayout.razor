@@ -2,9 +2,11 @@
 @implements IDisposable
 @inject INxtLocale Locale
 @inject IdeaSplit.Shared.Sync.SupabaseSync Sync
+@inject IdeaSplit.Web.Services.UndoService Undo
+@inject IdeaSplit.Web.Services.DataEvents Data
 
 @* Keyed by language so every page is rebuilt with the new strings when the language changes,
-   and by data version so pages reload when another device's changes arrive. *@
+   and by data version so pages reload when another device's changes arrive or a change is undone. *@
 <div class="app-shell" dir="@Locale.Direction" lang="@Locale.Language" @key="@($"{Locale.Language}:{dataVersion}")">
     @Body
 </div>
@@ -19,6 +21,8 @@
     {
         Locale.Changed += OnLanguageChanged;
         Sync.DataChanged += OnDataChanged;
+        Undo.Restored += OnDataChanged;
+        Data.Changed += OnDataChanged;
     }
 
     private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
@@ -33,5 +37,7 @@
     {
         Locale.Changed -= OnLanguageChanged;
         Sync.DataChanged -= OnDataChanged;
+        Undo.Restored -= OnDataChanged;
+        Data.Changed -= OnDataChanged;
     }
 }

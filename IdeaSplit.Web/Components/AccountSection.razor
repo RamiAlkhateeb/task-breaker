@@ -4,6 +4,7 @@
 @inject SupabaseSync Sync
 @inject IJSRuntime JS
 @inject ToastService Toasts
+@inject NavigationManager Nav
 
 @if (Auth.IsConfigured)
 {
@@ -20,10 +21,23 @@
                 else if (Sync.LastSyncedAt is { } at) { @T.F("last_synced", at.ToLocalTime().ToString("t")) }
                 else { @T["not_synced_yet"] }
             </p>
+            @if (Auth.PasswordResetPending || changingPassword)
+            {
+                @if (Auth.PasswordResetPending) { <p class="account-hint">@T["choose_new_password"]</p> }
+                <label class="nxt-label" for="account-new-password">@T["new_password_label"]</label>
+                <NxtTextInput Id="account-new-password" Type="password" Value="@newPassword" ValueChanged="v => newPassword = v"
+                              dir="ltr" autocomplete="new-password" />
+                <div class="account-actions">
+                    <NxtButton Variant="primary" OnClick="SavePasswordAsync" Busy="busy" Disabled="@(newPassword.Length < MinPasswordLength)">@T["save_password"]</NxtButton>
+                    @if (!Auth.PasswordResetPending) { <NxtButton Variant="ghost" OnClick="() => { changingPassword = false; newPassword = string.Empty; }">@T["cancel"]</NxtButton> }
+                </div>
+            }
             <div class="account-actions">
                 <NxtButton Variant="secondary" OnClick="Sync.SyncNowAsync" Busy="Sync.IsSyncing">@T["sync_now"]</NxtButton>
+                @if (!changingPassword && !Auth.PasswordResetPending) { <NxtButton Variant="ghost" OnClick="() => changingPassword = true">@T["change_password"]</NxtButton> }
                 <NxtButton Variant="ghost" OnClick="SignOutAsync">@T["sign_out"]</NxtButton>
             </div>
+            <button type="button" class="nxt-link account-delete" disabled="@busy" @onclick="DeleteAccountAsync">@T["delete_account"]</button>
         }
         else
         {
@@ -38,6 +52,7 @@
                 <NxtButton Variant="primary" OnClick="SignInAsync" Busy="busy" Disabled="@(!CanSubmit)">@T["sign_in"]</NxtButton>
                 <NxtButton Variant="secondary" OnClick="SignUpAsync" Disabled="@(busy || !CanSubmit)">@T["create_account"]</NxtButton>
             </div>
+            <button type="button" class="nxt-link account-forgot" disabled="@(!LooksLikeEmail(email) || busy)" @onclick="SendResetAsync">@T["forgot_password"]</button>
         }
     </NxtSettingsSection>
 }
@@ -45,6 +60,8 @@
 @code {
     private string email = "";
     private string password = "";
+    private string newPassword = "";
+    private bool changingPassword;
     private bool busy;
 
     protected override void OnInitialized()
@@ -91,6 +108,50 @@
         _ when error.Contains("Password should", StringComparison.OrdinalIgnoreCase) => T["error_weak_password"],
         _ => error
     };
+
+    private async Task SendResetAsync()
+    {
+        busy = true;
+        try
+        {
+            var error = await Auth.SendPasswordResetAsync(email, Nav.BaseUri);
+            if (error is null) Toasts.Show(T.F("reset_sent", email.Trim()), durationMs: 6000);
+            else Toasts.Show(Friendly(error), isError: true);
+        }
+        finally { busy = false; }
+    }
+
+    private async Task SavePasswordAsync()
+    {
+        busy = true;
+        try
+        {
+            var error = await Auth.UpdatePasswordAsync(newPassword);
+            if (error is not null) { Toasts.Show(Friendly(error), isError: true); return; }
+            newPassword = "";
+            changingPassword = false;
+            Toasts.Show(T["password_saved"]);
+        }
+        finally { busy = false; }
+    }
+
+    private async Task DeleteAccountAsync()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", T["confirm_delete_account"])) return;
+        busy = true;
+        try
+        {
+            var error = await Auth.DeleteAccountAsync();
+            if (error is not null)
+            {
+                Toasts.Show(error == SupabaseAuth.DeleteAccountUnavailable ? T["delete_account_unavailable"] : Friendly(error), isError: true);
+                return;
+            }
+            await Sync.SignOutAsync(clearLocalData: true);
+            Toasts.Show(T["account_deleted"]);
+        }
+        finally { busy = false; }
+    }
 
     private async Task SignOutAsync()
     {

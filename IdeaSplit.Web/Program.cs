@@ -16,12 +16,15 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<LocalStorageProjectStore>();
 builder.Services.AddScoped<IProjectStore>(sp => sp.GetRequiredService<LocalStorageProjectStore>());
 builder.Services.AddScoped<ISyncStore>(sp => sp.GetRequiredService<LocalStorageProjectStore>());
+builder.Services.AddScoped<IRoutineStore>(sp => sp.GetRequiredService<LocalStorageProjectStore>());
 // Sign-in and sync are off when the build has no Supabase values (local runs, forks).
 builder.Services.AddSingleton(new SupabaseConfig(
     builder.Configuration["Supabase:Url"] ?? "",
     builder.Configuration["Supabase:PublishableKey"] ?? ""));
 builder.Services.AddScoped<SupabaseAuth>();
 builder.Services.AddScoped<SupabaseSync>();
+builder.Services.AddScoped<IdeaSplit.Web.Services.UndoService>();
+builder.Services.AddScoped<IdeaSplit.Web.Services.DataEvents>();
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<GeminiService>();
 builder.Services.AddScoped(_ => new HttpClient

@@ -3,7 +3,7 @@
 @if (Date is not null)
 {
     <span class="task-due-badge @StateClass" title="@(Type == TaskScheduleType.ProjectDeadline ? T["deadline"] : T["date"])">
-        <i class="bi @(Type == TaskScheduleType.ProjectDeadline ? "bi-flag" : "bi-calendar3")" aria-hidden="true"></i>
+        <NxtIcon Name="@(Type == TaskScheduleType.ProjectDeadline ? "flag" : "calendar")" />
         @Label
     </span>
 }

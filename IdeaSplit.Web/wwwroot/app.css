@@ -93,7 +93,7 @@ textarea.form-control { min-height: 120px; }
 .btn-outline-primary { --bs-btn-color: var(--color-primary); --bs-btn-border-color: var(--color-primary); --bs-btn-hover-bg: var(--color-primary-light); --bs-btn-hover-border-color: var(--color-primary); --bs-btn-hover-color: var(--color-primary-hover); }
 .btn-outline-secondary { --bs-btn-color: var(--color-text-secondary); --bs-btn-border-color: var(--color-border); --bs-btn-hover-bg: var(--color-page); --bs-btn-hover-border-color: var(--color-text-secondary); --bs-btn-hover-color: var(--color-text-main); }
 .icon-button { width: 44px; min-width: 44px; height: 44px; padding: 0; }
-.icon-button i { font-size: 1.1rem; }
+.icon-button .nxt-icon { width: 20px; height: 20px; }
 .action-button { width: 100%; }
 .back-button { justify-content: center; }
 .model-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; }
@@ -140,8 +140,8 @@ textarea.form-control { min-height: 120px; }
 .task-menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-text-main); font: inherit; font-size: .95rem; text-align: start; cursor: pointer; }
 .task-menu button:hover { background: var(--color-page); }
 .task-menu button.is-danger { color: var(--color-danger); }
-.task-menu button i { width: 18px; color: var(--color-text-secondary); }
-.task-menu button.is-danger i { color: var(--color-danger); }
+.task-menu button .nxt-icon { width: 18px; height: 18px; color: var(--color-text-secondary); }
+.task-menu button.is-danger .nxt-icon { color: var(--color-danger); }
 .task-group + .task-group { border-top: 1px solid var(--color-border); }
 .task-menu-btn:hover { color: var(--color-text-main); background: var(--color-border); }
 .subtask-row { padding-inline-start: 38px; }
@@ -157,7 +157,7 @@ textarea.form-control { min-height: 120px; }
 .task-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .task-project { margin-top: 1px; font-size: .78rem; font-weight: 400; line-height: 1.3; color: var(--color-text-secondary); opacity: .85; overflow-wrap: anywhere; }
 .search-box { position: relative; display: flex; align-items: center; margin: 0 0 18px; }
-.search-box > i.bi-search { position: absolute; inset-inline-start: 14px; color: var(--color-text-secondary); pointer-events: none; }
+.search-box > .nxt-icon { position: absolute; inset-inline-start: 14px; width: 18px; height: 18px; color: var(--color-text-secondary); pointer-events: none; }
 .search-input { width: 100%; min-height: 44px; padding: 8px 40px 8px 40px; border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-page); color: var(--color-text-main); font: inherit; outline: 0; transition: border-color .15s ease, background-color .15s ease; }
 .search-input:focus { border-color: var(--color-primary); background: var(--color-card-bg); }
 .search-clear { position: absolute; inset-inline-end: 4px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
@@ -167,10 +167,10 @@ textarea.form-control { min-height: 120px; }
 .search-hit-project { margin-inline-start: 6px; font-size: .76rem; opacity: .85; }
 .archive-tasks { margin: 10px 0 0; padding: 10px 0 0; list-style: none; border-top: 1px solid var(--color-border); }
 .archive-tasks > li { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; }
-.archive-tasks > li > i { flex: 0 0 auto; margin-top: 3px; color: var(--color-text-secondary); }
+.archive-tasks > li > .nxt-icon { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 3px; color: var(--color-text-secondary); }
 .archive-tasks .is-done { color: var(--color-success); }
 .archive-subtask { display: block; margin-top: 4px; padding-inline-start: 4px; font-size: .9rem; color: var(--color-text-secondary); }
-.archive-subtask .bi { margin-inline-end: 4px; }
+.archive-subtask .nxt-icon { width: 15px; height: 15px; margin-inline-end: 4px; vertical-align: -2px; }
 .no-results { margin: 32px 0; text-align: center; color: var(--color-text-secondary); }
 .task-due-badge {
     display: inline-flex;
@@ -198,7 +198,7 @@ textarea.form-control { min-height: 120px; }
 .task-complete { color: var(--color-text-secondary); text-decoration: line-through; transition: color .2s ease; }
 .add-task-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 4px 0; border-bottom: 1px solid var(--color-border); transition: border-color .15s ease; }
 .add-task-row:focus-within { border-color: var(--color-primary); }
-.add-task-glyph { flex: 0 0 24px; text-align: center; color: var(--color-primary); font-size: 1.1rem; }
+.add-task-glyph { flex: 0 0 24px; width: 22px; height: 22px; color: var(--color-primary); }
 .add-task-input { flex: 1; min-width: 0; min-height: 44px; border: 0; outline: 0; background: transparent; color: var(--color-text-main); font: inherit; }
 .add-task-input::placeholder { color: var(--color-text-secondary); }
 .add-task-row .btn { width: 38px; min-width: 38px; height: 38px; min-height: 38px; border-radius: 50%; }
@@ -299,3 +299,100 @@ textarea.form-control { min-height: 120px; }
 .account-status, .account-hint { margin: 0; font-size: 14px; color: var(--nxt-text-2); display: flex; gap: 8px; align-items: center; }
 .account-status-error { color: var(--nxt-danger); }
 .account-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---- Today (Home) ---- */
+.today-section { margin-bottom: 24px; }
+.section-head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
+.section-head h2 { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 1.2rem; font-weight: 800; }
+.section-head h2 .nxt-icon { color: var(--color-primary); }
+.section-count { color: var(--color-text-secondary); font-size: .88rem; }
+.section-link { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 2px; font-size: .9rem; font-weight: 700; text-decoration: none; min-height: 44px; }
+.today-empty { margin: 4px 0 0; color: var(--color-text-secondary); }
+.today-done { animation: today-pop .35s ease; }
+@keyframes today-pop { from { transform: scale(.96); opacity: 0; } }
+.today-task { color: inherit; text-decoration: none; min-height: 32px; justify-content: center; }
+.today-task:hover { color: inherit; }
+.subtask-count { margin-inline-start: 6px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--color-page); font-weight: 700; }
+.list-heading { margin: 8px 0 12px; font-size: 1.2rem; font-weight: 800; }
+.carryover-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 18px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--color-primary-light); color: var(--color-text-main); font-weight: 600; }
+.carryover-banner > span { flex: 1 1 200px; }
+.carryover-actions { display: flex; gap: 4px; }
+.carryover-actions .btn { min-height: 40px; }
+
+/* ---- Swipe a task row (touch) ---- */
+.swipe-row { position: relative; border-radius: var(--radius-sm); }
+.swipe-row[data-swiping]:not([data-swiping=""]) { overflow: hidden; }
+.swipe-row[data-swiping="right"] { background: var(--color-success); }
+.swipe-row[data-swiping="left"] { background: #4f7cf0; }
+.swipe-row[data-swiping]::before { position: absolute; inset-block: 0; display: flex; align-items: center; padding-inline: 18px; color: #fff; font-weight: 800; font-size: .9rem; opacity: .75; }
+.swipe-row[data-swiping="right"]::before { content: attr(data-label-right); left: 0; }
+.swipe-row[data-swiping="left"]::before { content: attr(data-label-left); right: 0; }
+.swipe-row.swipe-ready::before { opacity: 1; }
+.swipe-surface { position: relative; background: var(--color-card-bg); }
+.task-row.swipe-surface { margin: 0; }
+.task-row input[type="checkbox"]:checked { animation: check-pop .25s ease; }
+@keyframes check-pop { 50% { transform: scale(1.18); } }
+
+/* ---- Sync state on Home ---- */
+.sync-indicator { color: var(--color-success); }
+.sync-indicator.is-error { color: var(--color-danger); }
+.sync-indicator.is-syncing { color: var(--color-text-secondary); }
+.sync-indicator.is-syncing .nxt-icon { animation: nxt-spin 1s linear infinite; }
+
+/* The page title receives focus after navigation (for screen readers); don't draw a box around it. */
+h1:focus { outline: none; }
+/* On pages with the plan box, toasts sit above it instead of covering it. */
+body:has(.composer) .nxt-toast { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+
+/* ---- Week strip (Home) ---- */
+.week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 0 0 20px; }
+.week-day { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 6px; border-radius: var(--radius-md); background: var(--color-page); color: var(--color-text-secondary); text-decoration: none; min-height: 64px; transition: background-color .15s ease, transform .15s ease; }
+.week-day:hover { color: var(--color-text-main); background: var(--color-border); }
+.week-day:active { transform: scale(.96); }
+.week-day-name { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
+.week-day-number { font-size: 1.05rem; font-weight: 800; color: var(--color-text-main); }
+.week-day-count { min-height: 1em; font-size: .7rem; font-weight: 800; color: var(--color-primary); }
+.week-day.is-today { background: var(--color-primary); color: rgba(255,255,255,.85); }
+.week-day.is-today .week-day-number, .week-day.is-today .week-day-count { color: #fff; }
+
+/* ---- Project date and reordering ---- */
+.date-edit-button { display: inline-flex; align-items: center; gap: 6px; padding: 2px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.date-edit-button .nxt-icon { width: 14px; height: 14px; }
+.date-edit-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
+.date-edit-row .form-control { flex: 1 1 160px; width: auto; }
+.drag-handle { flex: 0 0 auto; display: inline-grid; place-items: center; width: 20px; height: 32px; margin-inline-end: -6px; color: var(--color-text-secondary); opacity: .45; cursor: grab; touch-action: none; }
+.drag-handle:hover { opacity: 1; }
+.drag-ghost { opacity: .4; background: var(--color-primary-light); border-radius: var(--radius-sm); }
+.sortable-chosen .task-row { background: var(--color-page); }
+
+/* Line icons (Nxt.UI) in badges, buttons and toggles */
+.task-due-badge .nxt-icon { width: 13px; height: 13px; }
+.schedule-type-btn .nxt-icon { width: 17px; height: 17px; }
+.search-clear .nxt-icon { width: 16px; height: 16px; }
+.archive-tasks .nxt-icon.is-done { color: var(--color-success); }
+
+/* ---- Settings extras ---- */
+.account-forgot { align-self: flex-start; padding: 0; border: 0; background: none; cursor: pointer; }
+.account-forgot:disabled { opacity: .45; cursor: not-allowed; text-decoration: none; }
+.backup-import { cursor: pointer; }
+
+/* ---- First-run tips (Home) ---- */
+.onboarding { margin: 0 0 8px; padding: 18px; border-radius: var(--radius-md); background: var(--color-primary-light); }
+.onboarding h2 { margin: 0 0 10px; font-size: 1.15rem; font-weight: 800; }
+.onboarding ol { display: grid; gap: 10px; margin: 0 0 14px; padding: 0; list-style: none; }
+.onboarding li { display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; }
+.onboarding li .nxt-icon { flex: 0 0 auto; width: 20px; height: 20px; margin-top: 2px; color: var(--color-primary); }
+
+/* ---- Repeating tasks ---- */
+.repeat-mark { width: 14px; height: 14px; margin-inline-start: 6px; vertical-align: -2px; color: var(--color-text-secondary); }
+.repeat-editor { display: grid; gap: 10px; padding-block: 4px 12px; padding-inline: 38px 0; }
+.repeat-days { display: flex; flex-wrap: wrap; gap: 6px; }
+.repeat-day { min-width: 48px; }
+.repeat-actions { display: flex; gap: 4px; }
+.routine-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.routine-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--nxt-border); }
+.routine-list li:last-child { border-bottom: 0; }
+.routine-list li div { display: flex; flex-direction: column; min-width: 0; }
+.routine-list li strong { overflow-wrap: anywhere; }
+.routine-list li span { font-size: 13px; color: var(--nxt-text-2); }
+.account-delete { align-self: flex-start; padding: 0; border: 0; background: none; color: var(--nxt-danger); cursor: pointer; }
