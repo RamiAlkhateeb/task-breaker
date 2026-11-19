@@ -4,6 +4,7 @@
 @inject IProjectStore ProjectStore
 @inject GeminiService Gemini
 @inject SettingsService Settings
+@inject NxtText L
 
 @if (!string.IsNullOrEmpty(status))
 {
@@ -217,7 +218,7 @@
         }
         catch (Exception ex)
         {
-            error = ex.Message;
+            error = L.AiError(ex);
         }
         finally
         {

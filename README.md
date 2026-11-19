@@ -28,3 +28,15 @@ dotnet publish IdeaSplit.Web -c Release
 Deploy that `wwwroot` folder to GitHub Pages, Cloudflare Pages, Netlify, or any other static host. For GitHub Pages project sites, update the `<base href="/">` value in `IdeaSplit.Web/wwwroot/index.html` to include the repository path (for example, `/IdeaSplit/`).
 
 Shared UI (settings, AI chat, theme, logos) comes from the `Nxt.UI` submodule in `lib/Nxt.UI`. Clone with `git clone --recurse-submodules`, or run `git submodule update --init` after cloning.
+
+## Built-in AI (no Gemini key)
+
+Signed-in users without a Gemini key get AI through `functions/api/ai.js`, a Cloudflare Pages Function deployed with the site. It runs Cloudflare Workers AI and allows each user 20 requests a day. In the Pages project (Settings → Bindings) add:
+
+- **Workers AI**, variable name `AI`
+- **KV namespace**, variable name `AI_LIMITS` (create one first under Storage & Databases → KV)
+
+Optional environment variables: `AI_MODEL` (tried first; by default Llama 3.3 70B, then Llama 3.1 8B) and `AI_DAILY_LIMIT` (default 20). Bindings apply from the next deployment.
+
+The Cloudflare account's free Workers AI allowance is shared with its other apps (such as the Makdous photo worker); when it runs out for the day, the function answers 429 `daily_allowance`. Tests: `node --test tests/functions/*.test.mjs`.
+
