@@ -24,5 +24,8 @@ jobs:
       - name: Test
         run: dotnet test IdeaSplit.Tests
 
+      - name: Test the AI function
+        run: node --test tests/functions/*.test.mjs
+
       - name: Publish WASM app
         run: dotnet publish IdeaSplit.Web/IdeaSplit.Web.csproj -c Release -o publish

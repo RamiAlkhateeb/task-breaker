@@ -5,9 +5,13 @@
 // 400 (bad request) or 502/503.
 //
 // Pages project bindings (Settings > Bindings): Workers AI as "AI", and a KV namespace as "AI_LIMITS"
-// for the per-user daily count. Optional variables: AI_MODEL, AI_DAILY_LIMIT.
+// for the per-user daily count. Optional variables: AI_MODEL (tried first), AI_DAILY_LIMIT.
+//
+// The Cloudflare account's free Workers AI allowance is shared with its other apps (e.g. the Makdous photo
+// worker); once it is used up for the day every model fails with error 4006, answered here as 429 "daily_allowance".
 
-const DEFAULT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+// The larger model writes better plans; the small one is the fallback (same pair as the Makdous worker).
+const DEFAULT_MODELS = ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/meta/llama-3.1-8b-instruct"];
 const DEFAULT_DAILY_LIMIT = 20;
 const MAX_PROMPT_CHARS = 16000;
 const SYSTEM_PROMPT =
@@ -35,19 +39,51 @@ export async function onRequestPost({ request, env }) {
     if (used >= limit) return reply(429, { error: `Daily limit of ${limit} reached.` });
     await env.AI_LIMITS.put(key, String(used + 1), { expirationTtl: 2 * 24 * 60 * 60 });
 
+    const models = env.AI_MODEL ? [env.AI_MODEL, ...DEFAULT_MODELS.filter(model => model !== env.AI_MODEL)] : DEFAULT_MODELS;
+    const messages = [
+        { role: "system", content: `${SYSTEM_PROMPT} The JSON must match this JSON Schema: ${JSON.stringify(schema)}` },
+        { role: "user", content: prompt }
+    ];
+    let lastError = "no answer";
+    for (const model of models) {
+        // JSON mode first; models that don't support it are asked plainly and the JSON is read from the text.
+        for (const jsonMode of [true, false]) {
+            try {
+                const answer = await env.AI.run(model, {
+                    messages,
+                    max_tokens: 2048,
+                    ...(jsonMode ? { response_format: { type: "json_schema", json_schema: schema } } : {})
+                });
+                const result = readJson(answer?.response);
+                if (result) return reply(200, { result, remaining: limit - used - 1 });
+                lastError = "the answer wasn't JSON";
+            } catch (error) {
+                if (isAllowanceUsedUp(error)) {
+                    await refund(env, key, used);
+                    return reply(429, { error: "daily_allowance", detail: "The built-in AI has used up today's allowance." });
+                }
+                lastError = String(error?.message || error).slice(0, 200);
+            }
+        }
+    }
+    await refund(env, key, used);
+    return reply(502, { error: `The model didn't answer: ${lastError}` });
+}
+
+const isAllowanceUsedUp = error => /4006|allocation|neurons|quota/i.test(String(error?.message || error));
+
+const refund = (env, key, used) => env.AI_LIMITS.put(key, String(used), { expirationTtl: 2 * 24 * 60 * 60 });
+
+/** The model's answer as an object: already parsed (JSON mode), or the first {...} in its text. */
+export function readJson(response) {
+    if (response && typeof response === "object") return response;
+    const found = String(response ?? "").match(/\{[\s\S]*\}/);
+    if (!found) return null;
     try {
-        const answer = await env.AI.run(env.AI_MODEL || DEFAULT_MODEL, {
-            messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: prompt }],
-            response_format: { type: "json_schema", json_schema: schema },
-            max_tokens: 2048
-        });
-        let result = answer?.response;
-        if (typeof result === "string") result = JSON.parse(result);
-        if (result === null || typeof result !== "object") throw new Error("No JSON in the model's answer.");
-        return reply(200, { result, remaining: limit - used - 1 });
-    } catch (error) {
-        await env.AI_LIMITS.put(key, String(used), { expirationTtl: 2 * 24 * 60 * 60 });
-        return reply(502, { error: `The model didn't answer: ${error?.message || error}` });
+        const parsed = JSON.parse(found[0]);
+        return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+        return null;
     }
 }
 

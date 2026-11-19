@@ -36,5 +36,7 @@ Signed-in users without a Gemini key get AI through `functions/api/ai.js`, a Clo
 - **Workers AI**, variable name `AI`
 - **KV namespace**, variable name `AI_LIMITS` (create one first under Storage & Databases → KV)
 
-Optional environment variables: `AI_MODEL` (default `@cf/meta/llama-3.3-70b-instruct-fp8-fast`) and `AI_DAILY_LIMIT` (default 20). Bindings apply from the next deployment.
+Optional environment variables: `AI_MODEL` (tried first; by default Llama 3.3 70B, then Llama 3.1 8B) and `AI_DAILY_LIMIT` (default 20). Bindings apply from the next deployment.
+
+The Cloudflare account's free Workers AI allowance is shared with its other apps (such as the Makdous photo worker); when it runs out for the day, the function answers 429 `daily_allowance`. Tests: `node --test tests/functions/*.test.mjs`.
 
