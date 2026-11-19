@@ -25,6 +25,8 @@ builder.Services.AddScoped<SupabaseAuth>();
 builder.Services.AddScoped<SupabaseSync>();
 builder.Services.AddScoped<IdeaSplit.Web.Services.UndoService>();
 builder.Services.AddScoped<IdeaSplit.Web.Services.DataEvents>();
+// Signed-in users without a Gemini key get AI through the site's /api/ai function (Cloudflare Workers AI).
+builder.Services.AddScoped<IAiFallback, IdeaSplit.Web.Services.WorkersAiFallback>();
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<GeminiService>();
 builder.Services.AddScoped(_ => new HttpClient
